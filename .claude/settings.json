@@ -20,15 +20,6 @@
         }]
       }
     ],
-    "Stop": [
-      {
-        "matcher": "",
-        "hooks": [{
-          "type": "command",
-          "command": "./hooks/stop-handler.sh",
-          "timeout": 60
-        }]
-      }
-    ]
+    "Stop": []
   }
 }
