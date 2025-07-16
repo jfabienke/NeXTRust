@@ -1,0 +1,13 @@
+{
+  "current_phase": {
+    "id": "phase-1",
+    "name": "Environment Setup",
+    "status": "in_progress",
+    "expected_files": [
+      ".claude/settings.json",
+      "hooks/dispatcher.sh",
+      "ci/scripts/status-append.py"
+    ]
+  },
+  "activities": []
+}

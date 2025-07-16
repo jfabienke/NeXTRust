@@ -1,0 +1,124 @@
+name: NeXTRust CI
+on: [push, pull_request]
+
+jobs:
+  build-matrix:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        rust_profile: [debug, release]
+        cpu_variant: [m68030, m68040]
+      fail-fast: false
+    
+    runs-on: ${{ matrix.os }}
+    env:
+      O3_ENDPOINT: ${{ secrets.O3_ENDPOINT }}
+      GEMINI_ENDPOINT: ${{ secrets.GEMINI_ENDPOINT }}
+      O3_TOKEN: ${{ secrets.O3_TOKEN }}
+      GEMINI_TOKEN: ${{ secrets.GEMINI_TOKEN }}
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Export Matrix Variables
+        run: |
+          echo "CPU_VARIANT=${{ matrix.cpu_variant }}" >> $GITHUB_ENV
+          echo "OS_NAME=${{ matrix.os }}" >> $GITHUB_ENV
+      
+      - name: Setup Claude Code Environment
+        run: |
+          # Ensure hooks are executable
+          chmod +x hooks/dispatcher.sh
+          chmod +x ci/scripts/*.sh
+          chmod +x ci/scripts/*.py
+      
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      
+      - name: Log Build Start
+        run: |
+          echo "::group::Matrix Configuration"
+          echo "OS: ${{ matrix.os }}"
+          echo "Profile: ${{ matrix.rust_profile }}"
+          echo "CPU: ${{ matrix.cpu_variant }}"
+          echo "::endgroup::"
+          
+          python ci/scripts/status-append.py "build_start" \
+            '{"matrix": "${{ matrix.os }}-${{ matrix.rust_profile }}-${{ matrix.cpu_variant }}"}'
+      
+      - name: Cache Dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo
+            build/llvm-cache
+            build/rust-cache
+          key: ${{ runner.os }}-nextrust-${{ hashFiles('**/Cargo.lock', 'patches/llvm/*') }}
+          restore-keys: |
+            ${{ runner.os }}-nextrust-
+      
+      - name: Build LLVM
+        run: |
+          # Thin runner - Claude Code handles intelligence
+          ci/scripts/build-custom-llvm.sh \
+            --cpu-variant ${{ matrix.cpu_variant }}
+      
+      - name: Build Rust Target
+        run: |
+          cargo build \
+            --target m68k-next-nextstep \
+            --profile ${{ matrix.rust_profile }} \
+            --features ${{ matrix.cpu_variant }}
+      
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ matrix.os }}-${{ matrix.rust_profile }}-${{ matrix.cpu_variant }}
+          path: |
+            target/m68k-next-nextstep/${{ matrix.rust_profile }}/*.mach-o
+            build-logs/*.log
+      
+      - name: Update GitHub Checks
+        if: always()
+        run: |
+          JOB_OUTCOME="${{ job.status }}"
+          ci/scripts/github-checks-update.sh \
+            --status "${{ job.status }}" \
+            --phase "$(jq -r .current_phase.id docs/ci-status/pipeline-log.json 2>/dev/null || echo 'unknown')" \
+            --matrix "${{ matrix.os }}-${{ matrix.rust_profile }}-${{ matrix.cpu_variant }}" \
+            --outcome "$JOB_OUTCOME"
+          
+          # Record artifact hashes for traceability
+          if [[ "${{ job.status }}" == "success" ]]; then
+            if [[ -f "target/m68k-next-nextstep/${{ matrix.rust_profile }}/hello-world.mach-o" ]]; then
+              HASH=$(sha256sum target/m68k-next-nextstep/${{ matrix.rust_profile }}/hello-world.mach-o | cut -d' ' -f1)
+              python ci/scripts/status-append.py "artifact_hash" \
+                '{"file": "hello-world.mach-o", "hash": "'$HASH'", "matrix": "${{ matrix.os }}-${{ matrix.rust_profile }}-${{ matrix.cpu_variant }}"}'
+            fi
+          fi
+
+  # Parallel phase execution
+  emulator-setup:
+    runs-on: ubuntu-latest
+    # This can run in parallel with build
+    needs: []  
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Emulator
+        run: |
+          echo "Setting up Previous emulator..."
+          # TODO: Implement emulator setup
+    
+  rust-std-port:
+    runs-on: ubuntu-latest
+    # Only depends on successful basic target
+    needs: [build-matrix]
+    if: contains(needs.build-matrix.result, 'success')
+    steps:
+      - uses: actions/checkout@v4
+      - name: Port Rust Standard Library
+        run: |
+          echo "Porting rust std library..."
+          # TODO: Implement std library porting

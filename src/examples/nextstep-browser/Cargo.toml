@@ -1,0 +1,45 @@
+[package]
+name = "nextstep-browser"
+version = "0.1.0"
+edition = "2021"
+authors = ["NeXTRust Team"]
+description = "A modern web browser for NeXTSTEP using PostScript rendering and DSP acceleration"
+
+[dependencies]
+# Core dependencies
+url = "2.5"
+rand = "0.8"
+
+# HTML/CSS parsing
+html5ever = "0.26"
+cssparser = "0.33"
+selectors = "0.25"
+
+# Networking
+tokio = { version = "1.35", features = ["full"] }
+reqwest = { version = "0.11", features = ["blocking", "rustls-tls"] }
+rustls = "0.22"
+
+# NeXTSTEP integration (local crates)
+nextstep-sys = { path = "../../crates/nextstep-sys" }
+reactive-postscript = { path = "../../crates/reactive-postscript" }
+dsp-framework = { path = "../../crates/dsp-framework" }
+
+# Error handling
+thiserror = "1.0"
+anyhow = "1.0"
+
+[features]
+default = ["dsp-crypto", "postscript-render"]
+dsp-crypto = []
+postscript-render = []
+debug-render = []
+
+[profile.release]
+opt-level = 2  # Optimize for size on m68k
+lto = true
+codegen-units = 1
+
+[[bin]]
+name = "nextstep-browser"
+path = "src/main.rs"

@@ -1,0 +1,62 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Editor directories and files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Build outputs
+/target/
+/build/
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+*.mach-o
+
+# Rust
+Cargo.lock
+**/*.rs.bk
+*.pdb
+
+# LLVM/Clang
+*.bc
+*.ll
+
+# CI/CD
+.claude/sessions/
+.claude/backoff/
+.claude/hook-logs/
+.claude/status.lock
+.claude/last_session
+
+# Logs
+*.log
+/logs/
+
+# Temporary files
+*.tmp
+.cache/
+tmp/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.Python
+venv/
+env/
+
+# Secrets (never commit these)
+.env
+.env.local
+*.key
+*.pem
+secrets/
