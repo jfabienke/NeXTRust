@@ -67,7 +67,8 @@ jobs:
       
       - name: Build Rust Target
         run: |
-          cargo build \
+          # Use stub build script until target is implemented
+          ci/scripts/build-rust-target.sh \
             --target m68k-next-nextstep \
             --profile ${{ matrix.rust_profile }} \
             --features ${{ matrix.cpu_variant }}

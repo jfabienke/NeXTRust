@@ -26,6 +26,14 @@
         "exit_code": 101,
         "timestamp": "2025-07-16T19:01:19Z"
       }
+    },
+    {
+      "timestamp": "2025-07-16T19:08:59.719878Z",
+      "type": "llvm_build_complete",
+      "details": {
+        "cpu_variant": "m68030",
+        "success": true
+      }
     }
   ]
 }
