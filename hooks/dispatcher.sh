@@ -8,7 +8,10 @@
 
 set -euo pipefail  # Exit on error, undefined vars, pipe failures
 
-HOOK_TYPE=$1
+# Ensure we're in the right directory
+cd "$(dirname "$0")/.." || exit 1
+
+HOOK_TYPE=${1:-}
 PAYLOAD=$(cat)  # JSON from Claude Code
 
 # Setup logging
@@ -95,3 +98,4 @@ case "$HOOK_TYPE" in
 esac
 
 echo "$SESSION_ID" > "$SESSION_FILE"
+exit 0  # Always exit successfully
