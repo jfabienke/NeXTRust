@@ -47,7 +47,7 @@ EOF
         -d "$request")
     
     # Update status using thread-safe helper
-    python ci/scripts/status-append.py "gemini_review" \
+    python3 ci/scripts/status-append.py "gemini_review" \
         "{\"phase\": \"$(jq -r .current_phase.id docs/ci-status/pipeline-log.json 2>/dev/null || echo 'unknown')\", \"summary\": $(echo "$response" | jq -c .summary 2>/dev/null || echo '{}')}"
 }
 

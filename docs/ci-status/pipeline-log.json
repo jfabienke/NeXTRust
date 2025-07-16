@@ -9,5 +9,23 @@
       "ci/scripts/status-append.py"
     ]
   },
-  "activities": []
+  "activities": [
+    {
+      "timestamp": "2025-07-16T19:00:11.382152Z",
+      "type": "llvm_build_complete",
+      "details": {
+        "cpu_variant": "m68040",
+        "success": true
+      }
+    },
+    {
+      "timestamp": "2025-07-16T19:01:19.453354Z",
+      "type": "build_failure",
+      "details": {
+        "command": "cargo build",
+        "exit_code": 101,
+        "timestamp": "2025-07-16T19:01:19Z"
+      }
+    }
+  ]
 }

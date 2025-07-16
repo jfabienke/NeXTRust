@@ -45,7 +45,7 @@ jobs:
           echo "CPU: ${{ matrix.cpu_variant }}"
           echo "::endgroup::"
           
-          python ci/scripts/status-append.py "build_start" \
+          python3 ci/scripts/status-append.py "build_start" \
             '{"matrix": "${{ matrix.os }}-${{ matrix.rust_profile }}-${{ matrix.cpu_variant }}"}'
       
       - name: Cache Dependencies
@@ -94,7 +94,7 @@ jobs:
           if [[ "${{ job.status }}" == "success" ]]; then
             if [[ -f "target/m68k-next-nextstep/${{ matrix.rust_profile }}/hello-world.mach-o" ]]; then
               HASH=$(sha256sum target/m68k-next-nextstep/${{ matrix.rust_profile }}/hello-world.mach-o | cut -d' ' -f1)
-              python ci/scripts/status-append.py "artifact_hash" \
+              python3 ci/scripts/status-append.py "artifact_hash" \
                 '{"file": "hello-world.mach-o", "hash": "'$HASH'", "matrix": "${{ matrix.os }}-${{ matrix.rust_profile }}-${{ matrix.cpu_variant }}"}'
             fi
           fi

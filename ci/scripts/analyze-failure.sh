@@ -19,7 +19,7 @@ if [[ -f "$KNOWN_ISSUES_FILE" ]]; then
 fi
 
 # Log the failure
-python ci/scripts/status-append.py "build_failure" \
+python3 ci/scripts/status-append.py "build_failure" \
     "{\"command\": \"$COMMAND\", \"exit_code\": $EXIT_CODE, \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}"
 
 # TODO: Implement escalation logic

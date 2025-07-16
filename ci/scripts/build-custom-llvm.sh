@@ -37,7 +37,7 @@ sleep 2
 echo "LLVM build completed successfully"
 
 # Log completion
-python ci/scripts/status-append.py "llvm_build_complete" \
+python3 ci/scripts/status-append.py "llvm_build_complete" \
     "{\"cpu_variant\": \"$CPU_VARIANT\", \"success\": true}"
 
 exit 0

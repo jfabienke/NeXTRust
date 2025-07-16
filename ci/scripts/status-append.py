@@ -9,7 +9,7 @@ import fcntl
 import json
 import sys
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 def append_status(entry_type, data):
@@ -38,7 +38,7 @@ def append_status(entry_type, data):
             
             # Add new entry
             entry = {
-                "timestamp": datetime.utcnow().isoformat() + "Z",
+                "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
                 "type": entry_type,
                 "details": data
             }
@@ -54,7 +54,7 @@ def append_status(entry_type, data):
             if not md_path.exists():
                 with open(md_path, "w") as f:
                     f.write("# NeXTRust CI Pipeline Status\n")
-                    f.write(f"*Last updated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC*\n\n")
+                    f.write(f"*Last updated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} UTC*\n\n")
                     f.write("## Recent Activities\n")
             
             with open(md_path, "a") as f:

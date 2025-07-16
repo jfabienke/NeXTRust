@@ -41,7 +41,7 @@ if [[ "$SESSION_ID" == "$LAST_SESSION" ]]; then
 fi
 
 # Failure loop protection
-COMMIT_SHA=$(git rev-parse HEAD)
+COMMIT_SHA=$(git rev-parse HEAD 2>/dev/null || echo "no-commit")
 BACKOFF_FILE=".claude/backoff/$COMMIT_SHA"
 if [[ -f "$BACKOFF_FILE" ]]; then
     FAILURE_COUNT=$(cat "$BACKOFF_FILE")
@@ -73,12 +73,23 @@ case "$HOOK_TYPE" in
         
     stop)
         # Stop: Trigger reviews if phase complete
+        echo "[$(date)] Processing stop hook"
+        
+        # Check if we have required files
+        if [[ ! -f "docs/ci-status/pipeline-log.json" ]]; then
+            echo "[$(date)] No pipeline log found, skipping stop hook"
+            exit 0
+        fi
+        
         CURRENT_PHASE=$(jq -r .current_phase.id docs/ci-status/pipeline-log.json 2>/dev/null || echo "unknown")
         PHASE_MARKER="artifacts/phase/$CURRENT_PHASE.done"
         
         if [[ -f "$PHASE_MARKER" ]]; then
+            echo "[$(date)] Phase $CURRENT_PHASE complete, requesting review"
             ./ci/scripts/request-review.sh
             rm "$PHASE_MARKER"
+        else
+            echo "[$(date)] No phase marker found, nothing to do"
         fi
         ;;
 esac

@@ -43,7 +43,7 @@ EOF
         -d "$request")
     
     # Log decision using status-append.py for thread safety
-    python ci/scripts/status-append.py "design_decision" \
+    python3 ci/scripts/status-append.py "design_decision" \
         "{\"request\": $request, \"response\": $(echo "$response" | jq -c .)}"
 }
 
