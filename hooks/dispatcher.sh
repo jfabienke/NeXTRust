@@ -6,28 +6,34 @@
 # Outputs: Logs to .claude/hook-logs/, updates status artifacts
 # Usage: Called automatically by Claude Code via settings.json
 
-set -euo pipefail  # Exit on error, undefined vars, pipe failures
+set -uo pipefail  # Exit on undefined vars, pipe failures
+# Don't use -e to allow proper error handling
 
 # Ensure we're in the right directory
-cd "$(dirname "$0")/.." || exit 1
+cd "$(dirname "$0")/.." 2>/dev/null || { echo "[ERROR] Failed to change directory"; exit 0; }
 
 HOOK_TYPE=${1:-}
 PAYLOAD=$(cat)  # JSON from Claude Code
 
 # Setup logging
 LOG_DIR=".claude/hook-logs"
-mkdir -p "$LOG_DIR"
+mkdir -p "$LOG_DIR" 2>/dev/null || true
 LOG_FILE="$LOG_DIR/$(date +%Y%m%d-%H%M%S)-$HOOK_TYPE.log"
 exec 1> >(tee -a "$LOG_FILE")
 exec 2>&1
 
 echo "[$(date)] Hook dispatcher started: $HOOK_TYPE"
 
-# Extract relevant fields
-TOOL_NAME=$(echo "$PAYLOAD" | jq -r '.tool_name // empty')
-COMMAND=$(echo "$PAYLOAD" | jq -r '.tool_args.command // empty')
-EXIT_CODE=$(echo "$PAYLOAD" | jq -r '.tool_response.exit_code // 0')
-SESSION_ID=$(echo "$PAYLOAD" | jq -r '.session_id')
+# Extract relevant fields with error handling
+if ! echo "$PAYLOAD" | jq empty 2>/dev/null; then
+    echo "[$(date)] Invalid JSON payload, exiting cleanly"
+    exit 0
+fi
+
+TOOL_NAME=$(echo "$PAYLOAD" | jq -r '.tool_name // empty' 2>/dev/null || echo "")
+COMMAND=$(echo "$PAYLOAD" | jq -r '.tool_args.command // empty' 2>/dev/null || echo "")
+EXIT_CODE=$(echo "$PAYLOAD" | jq -r '.tool_response.exit_code // 0' 2>/dev/null || echo "0")
+SESSION_ID=$(echo "$PAYLOAD" | jq -r '.session_id' 2>/dev/null || echo "unknown")
 
 # Idempotency check with runner-specific session files
 RUNNER_NAME="${RUNNER_NAME:-local}"
@@ -36,7 +42,7 @@ CPU_VARIANT="${CPU_VARIANT:-default}"
 SESSION_DIR=".claude/sessions"
 SESSION_FILE="$SESSION_DIR/$RUNNER_NAME-$OS_NAME-$CPU_VARIANT.session"
 
-mkdir -p "$SESSION_DIR"
+mkdir -p "$SESSION_DIR" 2>/dev/null || true
 LAST_SESSION=$(cat "$SESSION_FILE" 2>/dev/null || echo "")
 if [[ "$SESSION_ID" == "$LAST_SESSION" ]]; then
     echo "[$(date)] Skipping duplicate session: $SESSION_ID"
