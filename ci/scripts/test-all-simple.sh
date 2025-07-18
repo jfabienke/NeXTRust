@@ -75,7 +75,7 @@ echo
 echo "═══ Hook System Tests ═══"
 
 run_test "Dispatcher executable" \
-    "test -x hooks/dispatcher.sh"
+    "test -x hooks/dispatcher-v2.sh"
 
 run_test "Pre-tool-use hooks" \
     "ls hooks/dispatcher.d/pre-tool-use/*.sh >/dev/null 2>&1"

@@ -5,7 +5,7 @@
         "matcher": "Bash",
         "hooks": [{
           "type": "command",
-          "command": "./hooks/dispatcher.sh pre",
+          "command": "./hooks/dispatcher-v2.sh pre",
           "timeout": 90
         }]
       }
@@ -15,7 +15,7 @@
         "matcher": "Bash",
         "hooks": [{
           "type": "command",
-          "command": "./hooks/dispatcher.sh post",
+          "command": "./hooks/dispatcher-v2.sh post",
           "timeout": 300
         }]
       }

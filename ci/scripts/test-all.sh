@@ -86,7 +86,7 @@ test_suite_hooks() {
     echo "═══ Hook System Tests ═══"
     
     run_test "Dispatcher executable" \
-        "test -x hooks/dispatcher.sh"
+        "test -x hooks/dispatcher-v2.sh"
     
     run_test "Pre-tool-use hooks" \
         "ls hooks/dispatcher.d/pre-tool-use/*.sh >/dev/null 2>&1"
@@ -100,7 +100,7 @@ test_suite_hooks() {
     # Test specific hook functionality
     local TEST_PAYLOAD='{"tool_name":"Bash","tool_args":{"command":"echo test"}}'
     run_test "Hook routing" \
-        "echo '$TEST_PAYLOAD' | bash hooks/dispatcher.sh pre 2>/dev/null"
+        "echo '$TEST_PAYLOAD' | bash hooks/dispatcher-v2.sh pre 2>/dev/null"
 }
 
 # Integration tests

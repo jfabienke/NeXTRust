@@ -13,6 +13,9 @@ set -uo pipefail
 
 HOOK_TYPE=${1:-}
 
+# Always log that dispatcher was called
+echo "[$(date)] Hook dispatcher-v2 called with type: ${HOOK_TYPE:-none}"
+
 # Check for slash command mode FIRST
 if [[ -n "${CI_COMMAND:-}" ]]; then
     echo "[$(date)] Executing slash command: $CI_COMMAND"

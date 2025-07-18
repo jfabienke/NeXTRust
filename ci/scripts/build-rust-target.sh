@@ -6,6 +6,13 @@
 #
 set -euo pipefail
 
+# Trigger pre-hook if in CI
+if [[ -n "${GITHUB_ACTIONS:-}" ]] && [[ -x "ci/scripts/trigger-hook.sh" ]]; then
+    echo "=== Triggering pre-hook for Rust build ==="
+    ci/scripts/trigger-hook.sh pre Bash "$0 $*" || true
+    echo "=== Pre-hook completed ==="
+fi
+
 # Default values
 TARGET="m68k-next-nextstep"
 PROFILE="debug"
@@ -118,6 +125,13 @@ if cargo +nightly build \
     python3 ci/scripts/status-append.py "rust_build_complete" \
         "{\"target\": \"$TARGET\", \"profile\": \"$PROFILE\", \"features\": \"$FEATURES\", \"success\": true}"
     
+    # Trigger post-hook on success if in CI
+    if [[ -n "${GITHUB_ACTIONS:-}" ]] && [[ -x "ci/scripts/trigger-hook.sh" ]]; then
+        echo "=== Triggering post-hook for Rust build success ==="
+        ci/scripts/trigger-hook.sh post Bash "build-rust-target.sh" 0 || true
+        echo "=== Post-hook completed ==="
+    fi
+    
     exit 0
 else
     echo "Rust build failed!"
@@ -136,6 +150,13 @@ else
     # Log failure
     python3 ci/scripts/status-append.py "rust_build_failed" \
         "{\"target\": \"$TARGET\", \"profile\": \"$PROFILE\", \"features\": \"$FEATURES\", \"success\": false}"
+    
+    # Trigger post-hook on failure if in CI
+    if [[ -n "${GITHUB_ACTIONS:-}" ]] && [[ -x "ci/scripts/trigger-hook.sh" ]]; then
+        echo "=== Triggering post-hook for Rust build failure ===" >&2
+        ci/scripts/trigger-hook.sh post Bash "build-rust-target.sh" 1 || true
+        echo "=== Post-hook completed ===" >&2
+    fi
     
     exit 1
 fi
