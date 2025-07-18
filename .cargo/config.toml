@@ -1,0 +1,14 @@
+[target.m68k-next-nextstep]
+linker = "m68k-unknown-none-gcc"
+rustflags = [
+    "-C", "code-model=large",
+    "-C", "relocation-model=static",
+    "-C", "panic=abort",
+]
+
+[build]
+target = "targets/m68k-next-nextstep.json"
+
+[unstable]
+build-std = ["core"]
+build-std-features = ["panic_immediate_abort"]

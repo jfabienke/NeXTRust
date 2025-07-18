@@ -1,0 +1,54 @@
+{
+  "arch": "m68k",
+  "os": "none",
+  "vendor": "unknown",
+  "linker-flavor": "gcc",
+  "linker": "m68k-next-nextstep-gcc",
+  "data-layout": "E-m:e-p:32:32:32-i64:64-n8:16:32",
+  "llvm-target": "m68k-unknown-none",
+  "target-endian": "big",
+  "target-pointer-width": "32",
+  "target-c-int-width": "32",
+  "executables": true,
+  "has-rpath": false,
+  "has-elf-tls": false,
+  "panic-strategy": "abort",
+  "relocation-model": "static",
+  "code-model": "large",
+  "function-sections": false,
+  "is-builtin": false,
+  "min-atomic-width": 8,
+  "max-atomic-width": 32,
+  "atomic-cas": false,
+  "features": "+68030",
+  "dynamic-linking": false,
+  "os-family": "unix",
+  "abi-return-struct-as-int": true,
+  "emit-debug-gdb-scripts": false,
+  "requires-uwtable": false,
+  "default-hidden-visibility": false,
+  "exe-suffix": "",
+  "staticlib-suffix": ".a",
+  "dll-suffix": ".so",
+  "archive-format": "bsd",
+  "pre-link-args": {
+    "gcc": [
+      "-nostdlib",
+      "-static"
+    ]
+  },
+  "post-link-args": {
+    "gcc": [
+      "-lgcc"
+    ]
+  },
+  "cpu": "68030",
+  "disable-redzone": true,
+  "eliminate-frame-pointer": false,
+  "linker-is-gnu": true,
+  "no-default-libraries": true,
+  "position-independent-executables": false,
+  "static-position-independent-executables": false,
+  "trap-unreachable": true,
+  "singlethread": true
+}

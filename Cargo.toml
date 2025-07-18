@@ -1,0 +1,21 @@
+[package]
+name = "nextrust"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+
+[[example]]
+name = "hello-no-std"
+path = "src/examples/hello-no-std.rs"
+
+[profile.dev]
+panic = "abort"
+opt-level = "z"
+lto = false
+
+[profile.release]
+panic = "abort"
+opt-level = "z"
+lto = true
+strip = true
