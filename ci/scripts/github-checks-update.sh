@@ -2,7 +2,7 @@
 # ci/scripts/github-checks-update.sh - Update GitHub Checks status
 #
 # Purpose: Update GitHub check runs with build status
-# Usage: github-checks-update.sh --status <status> --phase <phase> --matrix <matrix> --outcome <outcome>
+# Usage: github-checks-update.sh --status <status> --phase <phase> --matrix <matrix> --conclusion <conclusion>
 
 set -euo pipefail
 
@@ -21,8 +21,8 @@ while [[ $# -gt 0 ]]; do
             MATRIX="$2"
             shift 2
             ;;
-        --outcome)
-            OUTCOME="$2"
+        --conclusion|--outcome)  # Support both for backwards compatibility
+            CONCLUSION="$2"
             shift 2
             ;;
         *)
@@ -35,24 +35,7 @@ done
 update_check() {
     local status=$STATUS
     local phase=$PHASE
-    local outcome=$OUTCOME
-    
-    # Map job outcome to conclusion
-    local conclusion
-    case "$outcome" in
-        success)
-            conclusion="success"
-            ;;
-        failure)
-            conclusion="failure"
-            ;;
-        cancelled)
-            conclusion="cancelled"
-            ;;
-        *)
-            conclusion="neutral"
-            ;;
-    esac
+    local conclusion=${CONCLUSION:-neutral}
     
     # Check if gh CLI is available
     if ! command -v gh &> /dev/null; then

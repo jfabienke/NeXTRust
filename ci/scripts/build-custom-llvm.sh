@@ -1,43 +1,121 @@
-#!/bin/bash
-# ci/scripts/build-custom-llvm.sh - Build LLVM with m68k Mach-O support
+#!/usr/bin/env bash
+# ci/scripts/build-custom-llvm.sh - Build custom LLVM with structured error handling
 #
-# Purpose: Build custom LLVM toolchain for NeXTRust
-# Usage: build-custom-llvm.sh --cpu-variant <variant>
+# Purpose: Apply patches and build LLVM for m68k-next-nextstep target
+# Usage: ./ci/scripts/build-custom-llvm.sh
+#
+set -uo pipefail
 
-set -euo pipefail
+# Error handling function
+emit_error() {
+    local error_type="$1"
+    local error_code="$2"
+    local details="$3"
+    local context="${4:-}"
+    
+    # Emit structured JSON error to stderr
+    cat >&2 << EOF
+{
+  "error_type": "$error_type",
+  "error_code": "$error_code",
+  "details": "$details",
+  "context": "$context",
+  "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+  "script": "build-custom-llvm.sh",
+  "phase": "${PHASE_ID:-phase-2}"
+}
+EOF
+    exit 1
+}
 
-CPU_VARIANT="m68030"  # Default
+echo "=== Building Custom LLVM for NeXTSTEP ==="
+echo
 
-# Parse arguments
-while [[ $# -gt 0 ]]; do
-    case $1 in
-        --cpu-variant)
-            CPU_VARIANT="$2"
-            shift 2
-            ;;
-        *)
-            echo "Unknown option: $1"
-            exit 1
-            ;;
-    esac
+# Configuration
+LLVM_DIR="llvm-project"
+BUILD_DIR="build/llvm"
+INSTALL_DIR="$PWD/toolchain"
+PATCHES_DIR="patches/llvm"
+
+# Check prerequisites
+if [[ ! -d "$LLVM_DIR" ]]; then
+    emit_error "MissingDependency" "E001" "LLVM source directory not found" "$LLVM_DIR"
+fi
+
+if [[ ! -d "$PATCHES_DIR" ]]; then
+    emit_error "MissingDependency" "E002" "Patches directory not found" "$PATCHES_DIR"
+fi
+
+# Apply patches
+echo "Applying NeXTSTEP patches..."
+for patch in "$PATCHES_DIR"/*.patch; do
+    if [[ -f "$patch" ]]; then
+        echo "  - Applying $(basename "$patch")"
+        if ! patch -p1 -d "$LLVM_DIR" < "$patch"; then
+            emit_error "PatchError" "E003" "Failed to apply patch" "$(basename "$patch")"
+        fi
+    fi
 done
 
-echo "[$(date)] Starting LLVM build for CPU variant: $CPU_VARIANT"
-
-# TODO: Implement actual LLVM build
-# For now, this is a stub that simulates the build
-echo "Building LLVM with m68k Mach-O support..."
-echo "CPU variant: $CPU_VARIANT"
-
 # Create build directory
-mkdir -p build/llvm-cache
+mkdir -p "$BUILD_DIR"
+cd "$BUILD_DIR" || emit_error "FileSystemError" "E004" "Cannot create build directory" "$BUILD_DIR"
 
-# Simulate build success
-sleep 2
-echo "LLVM build completed successfully"
+# Configure build
+echo "Configuring LLVM build..."
+if ! cmake -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR" \
+    -DLLVM_TARGETS_TO_BUILD="X86;M68k" \
+    -DLLVM_ENABLE_PROJECTS="clang;lld" \
+    -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD="M68k" \
+    "../../$LLVM_DIR/llvm"; then
+    
+    emit_error "ConfigurationError" "E005" "CMake configuration failed" "Check CMakeLists.txt and patches"
+fi
 
-# Log completion
-python3 ci/scripts/status-append.py "llvm_build_complete" \
-    "{\"cpu_variant\": \"$CPU_VARIANT\", \"success\": true}"
+# Build
+echo "Building LLVM (this may take a while)..."
+if ! cmake --build . --target install; then
+    # Try to extract specific error
+    if grep -q "undefined reference" build.log 2>/dev/null; then
+        emit_error "LinkError" "E006" "Linker error during build" "Check symbol definitions in patches"
+    elif grep -q "No rule to make target" build.log 2>/dev/null; then
+        emit_error "BuildError" "E007" "Missing build target" "Check CMake configuration"
+    else
+        emit_error "BuildError" "E008" "Generic build failure" "See build.log for details"
+    fi
+fi
+
+# Validate build
+echo "Validating build..."
+if [[ ! -x "$INSTALL_DIR/bin/clang" ]]; then
+    emit_error "ValidationError" "E009" "Clang binary not found after build" "$INSTALL_DIR/bin/clang"
+fi
+
+# Test with simple program
+echo "Testing custom LLVM..."
+cat > test.c << 'EOF'
+int main() { return 0; }
+EOF
+
+if ! "$INSTALL_DIR/bin/clang" -target m68k-next-nextstep -c test.c -o test.o; then
+    emit_error "TestError" "E010" "Clang cannot compile for m68k-next-nextstep" "Check triple support"
+fi
+
+# Success
+echo "✅ Custom LLVM built successfully!"
+echo "Installation directory: $INSTALL_DIR"
+
+# Log success with nextrust CLI
+if command -v ./ci/scripts/nextrust &> /dev/null; then
+    ./ci/scripts/nextrust update-status \
+        "LLVM build completed successfully" \
+        --status-type success \
+        --metadata "{\"install_dir\": \"$INSTALL_DIR\", \"version\": \"$(${INSTALL_DIR}/bin/clang --version | head -1)\"}"
+fi
+
+# Clean up
+rm -f test.c test.o
 
 exit 0

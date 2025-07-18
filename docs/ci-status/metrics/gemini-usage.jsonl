@@ -1,0 +1,74 @@
+{
+  "timestamp": "2025-07-18T15:11:08Z",
+  "prompt_size": 1000,
+  "response_size": 5000,
+  "success": true,
+  "error_type": "",
+  "model": "gemini-2.5-pro",
+  "mode": "cli"
+}
+{
+  "timestamp": "2025-07-18T15:11:08Z",
+  "prompt_size": 2000,
+  "response_size": 0,
+  "success": false,
+  "error_type": "RATE_LIMIT",
+  "model": "gemini-2.5-pro",
+  "mode": "cli"
+}
+{
+  "timestamp": "2025-07-18T15:11:57Z",
+  "prompt_size": 1000,
+  "response_size": 5000,
+  "success": true,
+  "error_type": "",
+  "model": "gemini-2.5-pro",
+  "mode": "cli"
+}
+{
+  "timestamp": "2025-07-18T15:11:57Z",
+  "prompt_size": 2000,
+  "response_size": 0,
+  "success": false,
+  "error_type": "RATE_LIMIT",
+  "model": "gemini-2.5-pro",
+  "mode": "cli"
+}
+{
+  "timestamp": "2025-07-18T15:12:38Z",
+  "prompt_size": 1000,
+  "response_size": 5000,
+  "success": true,
+  "error_type": "",
+  "model": "gemini-2.5-pro",
+  "mode": "cli"
+}
+{
+  "timestamp": "2025-07-18T15:12:38Z",
+  "prompt_size": 2000,
+  "response_size": 0,
+  "success": false,
+  "error_type": "RATE_LIMIT",
+  "model": "gemini-2.5-pro",
+  "mode": "cli"
+}
+{
+  "timestamp": "2025-07-18T15:12:49Z",
+  "prompt_size": 3000,
+  "response_size": 6000,
+  "success": true,
+  "error_type": "",
+  "model": "gemini-2.5-pro",
+  "mode": "cli"
+}
+{
+  "timestamp": "2025-07-18T15:15:22Z",
+  "prompt_size": 1000,
+  "response_size": 5000,
+  "success": true,
+  "error_type": "",
+  "model": "gemini-2.5-pro",
+  "mode": "cli"
+}
+{"timestamp":"2025-07-18T15:18:10Z","prompt_size":1000,"response_size":5000,"success":true,"error_type":"","model":"gemini-2.5-pro","mode":"cli"}
+{"timestamp":"2025-07-18T15:18:10Z","prompt_size":2000,"response_size":0,"success":false,"error_type":"RATE_LIMIT","model":"gemini-2.5-pro","mode":"cli"}

@@ -1,0 +1,91 @@
+name: Pipeline Maintenance
+on:
+  schedule:
+    - cron: '0 0 * * 0'  # Weekly on Sunday at midnight UTC
+  workflow_dispatch:  # Allow manual trigger
+    inputs:
+      dry_run:
+        description: 'Run in dry-run mode'
+        required: false
+        default: 'false'
+        type: boolean
+
+jobs:
+  rotate-status:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      
+      - name: Check Status File Size
+        run: |
+          echo "::group::Current Status Files"
+          if [[ -f "docs/ci-status/pipeline-log.json" ]]; then
+            ls -lh docs/ci-status/pipeline-log.json
+            echo "JSON entries: $(jq '.activities | length' docs/ci-status/pipeline-log.json)"
+          fi
+          if [[ -f "docs/ci-status/pipeline-log.md" ]]; then
+            ls -lh docs/ci-status/pipeline-log.md
+          fi
+          echo "::endgroup::"
+      
+      - name: Rotate Status Logs
+        run: |
+          if [[ "${{ inputs.dry_run }}" == "true" ]]; then
+            python ci/scripts/rotate_status.py --dry-run
+          else
+            python ci/scripts/rotate_status.py
+          fi
+      
+      - name: Commit Archives
+        if: inputs.dry_run != 'true'
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          
+          # Check if there are changes
+          if [[ -n $(git status --porcelain docs/ci-status/) ]]; then
+            git add docs/ci-status/
+            git commit -m "chore: Archive pipeline logs [skip ci]
+            
+            Automated log rotation:
+            - Archived logs older than 30 days
+            - Maintained current phase status
+            - Reduced file size for performance"
+            
+            git push
+          else
+            echo "No changes to commit"
+          fi
+  
+  clean-old-artifacts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Clean Old Session Files
+        run: |
+          echo "::group::Cleaning old session files"
+          find .claude/sessions -type f -mtime +7 -delete 2>/dev/null || true
+          find .claude/hook-logs -type f -mtime +30 -delete 2>/dev/null || true
+          find .claude/backoff -type f -mtime +30 -delete 2>/dev/null || true
+          echo "::endgroup::"
+      
+      - name: Clean Old Metrics
+        run: |
+          if [[ -f ".claude/metrics.csv" ]]; then
+            echo "::group::Cleaning old metrics"
+            # Keep only last 7 days of metrics
+            cutoff=$(date -u +%s -d '7 days ago')
+            awk -F',' -v cutoff="$cutoff" '$1 >= cutoff' .claude/metrics.csv > .claude/metrics.csv.tmp
+            mv .claude/metrics.csv.tmp .claude/metrics.csv
+            echo "::endgroup::"
+          fi

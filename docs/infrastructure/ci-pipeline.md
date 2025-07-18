@@ -1,6 +1,8 @@
 # NeXTRust CI Pipeline: Claude Code-First Architecture
 
-*Last updated: 2025-01-16 4:30 PM*
+*Last updated: 2025-07-18 16:30*
+
+> **Version:** 2.0 - Modular dispatcher architecture with enhanced robustness
 
 ## Overview
 
@@ -13,6 +15,30 @@ The NeXTRust CI pipeline leverages Claude Code's native hook capabilities as the
 3. **Structured Status Tracking**: Dual-format artifacts (Markdown + JSON)
 4. **Hook-Based Orchestration**: No client-side git hooks needed
 5. **Idempotent Operations**: Safe for retries and context resets
+
+## Version 2.0 Enhancements
+
+### Modular Dispatcher Architecture
+- **Thin Router**: Main dispatcher (`hooks/dispatcher-v2.sh`) reduced to ~30 lines
+- **Module Organization**: Clear separation in `hooks/dispatcher.d/`
+  - `common/` - Shared utilities (setup, cleanup, metrics, idempotency)
+  - `pre-tool-use/` - Pre-execution validations
+  - `post-tool-use/` - Failure analysis and status updates
+  - `stop/` - Phase completion and review triggers
+  - `user-prompt-submit/` - Prompt auditing for token correlation
+
+### Robustness Improvements
+- **Composite Idempotency Keys**: `SESSION_ID:COMMIT_SHA:RUN_ID:RUN_ATTEMPT`
+- **File Locking**: 5-second timeout with exponential backoff
+- **Failure Loop Protection**: Per-commit backoff tracking in `.claude/backoff/`
+- **Persistent Failure Tracking**: Database-backed command failure counts
+- **Input Validation**: Comprehensive sanitization for slash commands
+
+### Enhanced Integrations
+- **ccusage**: Full token usage tracking with cost monitoring
+- **Gemini CLI**: Native integration with error handling and fallback
+- **O3 Design Service**: Automatic escalation for complex failures
+- **Slash Commands**: 11 commands for CI control via PR comments
 
 ## Hook Configuration
 
@@ -515,39 +541,42 @@ EOF
 
 #### Implementation Review by Gemini
 
+The pipeline uses the Gemini CLI for code reviews, with automatic fallback to API if CLI is not available:
+
 ```bash
 #!/bin/bash
 # ci/scripts/request-review.sh
 
 request_gemini_review() {
-    # Bundle artifacts
-    local artifacts=$(tar czf - \
-        target/m68k-next-nextstep/release/*.mach-o \
-        test-results/*.log \
-        docs/ci-status/pipeline-log.json | base64)
+    # Get current phase and changed files
+    local phase_id=$(jq -r '.current_phase.id' docs/ci-status/pipeline-log.json)
+    local changed_files=($(git diff --name-only origin/main...HEAD))
     
-    # Prepare review request
-    local request=$(cat <<EOF
-{
-  "phase": "$(jq -r .current_phase.id docs/ci-status/pipeline-log.json)",
-  "changes": $(git diff --name-only HEAD~1 | jq -R . | jq -s .),
-  "test_results": "$(jq .test_summary test-results/summary.json)",
-  "artifacts_base64": "$artifacts"
-}
+    # Check if Gemini CLI is available
+    if command -v gemini &> /dev/null; then
+        # Use CLI with @path syntax for efficient file inclusion
+        local prompt_file=$(mktemp)
+        cat > "$prompt_file" <<EOF
+Please review the following changes for phase: $phase_id
+
+Changed files:
+$(for f in "${changed_files[@]}"; do echo "@$f"; done)
 EOF
-)
-    
-    # Call Gemini API
-    response=$(curl -s -X POST "$GEMINI_ENDPOINT/review" \
-        -H "Authorization: Bearer $GEMINI_TOKEN" \
-        -H "Content-Type: application/json" \
-        -d "$request")
-    
-    # Update status using thread-safe helper
-    python ci/scripts/status-append.py "gemini_review" \
-        "{\"phase\": \"$(jq -r .current_phase.id docs/ci-status/pipeline-log.json)\", \"summary\": $(echo "$response" | jq -c .summary)}"
+        
+        # Gemini CLI automatically loads GEMINI.md for review context
+        gemini --model gemini-2.5-pro --json --temperature 0.2 -f "$prompt_file"
+    else
+        # Fallback to API method (see gemini-cli-wrapper.sh)
+        use_gemini_api "$phase_id" "${changed_files[@]}"
+    fi
 }
 ```
+
+**Key Features:**
+- **GEMINI.md**: Project-wide review guidelines automatically loaded
+- **@path syntax**: Efficient file inclusion without manual concatenation
+- **Graceful fallback**: Works with or without CLI installation
+- **Token efficiency**: Only sends changed files, not entire repository
 
 ## Security Considerations
 
@@ -567,11 +596,13 @@ environments:
     secrets:
       - O3_ENDPOINT      # https://api.openai.com/v1
       - O3_TOKEN         # Bearer token
-      - GEMINI_ENDPOINT  # https://api.gemini.com/v1 
-      - GEMINI_TOKEN     # Bearer token
+      - GEMINI_API_KEY   # For API fallback when CLI unavailable
 ```
 
-Hooks access via environment variables, never hardcoded.
+For Gemini reviews:
+- **Preferred**: Install Gemini CLI locally (`pip install google-generativeai`)
+- **Fallback**: Set `GEMINI_API_KEY` environment variable for API access
+- **CI/CD**: Can use either method based on runner configuration
 
 ### Token Rotation
 
@@ -780,12 +811,230 @@ This is a **POSIX-only pipeline by design**, optimized for Unix-like development
 - Vintage platform development benefits from Unix heritage
 - Simplifies CI/CD maintenance and testing matrix
 
+## Architectural Improvements (v2.0 Roadmap)
+
+*Last updated: 2025-01-17 12:30 PM*
+
+Based on architectural review, the following improvements will enhance scalability and maintainability:
+
+### 1. Modular Dispatcher Architecture
+
+**Current State**: Single `dispatcher.sh` growing towards "god script" status  
+**Target State**: Router pattern with modular sub-scripts
+
+```bash
+hooks/
+├── dispatcher.sh           # Thin router (~30 LOC)
+└── dispatcher.d/
+    ├── pre-tool-use/
+    │   ├── validate-llvm.sh
+    │   └── check-phase-alignment.sh
+    ├── post-tool-use/
+    │   ├── analyze-build-failure.sh
+    │   └── update-metrics.sh
+    └── stop/
+        └── trigger-review.sh
+```
+
+**Implementation**:
+```bash
+# New dispatcher.sh core logic
+for script in dispatcher.d/${HOOK_TYPE}/*.sh; do
+    [[ -x "$script" ]] && source "$script"
+done
+```
+
+### 2. Status Artifact Rotation
+
+**Problem**: Unbounded growth of `pipeline-log.json` (could reach MB size)  
+**Solution**: Automated rotation with 30-day retention
+
+```yaml
+# .github/workflows/maintenance.yml
+name: Pipeline Maintenance
+on:
+  schedule:
+    - cron: '0 0 * * 0'  # Weekly on Sunday
+jobs:
+  rotate-status:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python ci/scripts/rotate_status.py
+```
+
+**Rotation Logic**:
+- Archive logs > 30 days old to `docs/ci-status/archive/`
+- Keep current phase + last 30 days in active log
+- Update dashboards to query archives when needed
+
+### 3. Composite Idempotency Keys
+
+**Current**: `SESSION_ID` only (vulnerable to CI retries)  
+**Improved**: Composite key prevents edge cases
+
+```bash
+# Generate composite key
+IDEMPOTENCY_KEY=$(echo -n "${SESSION_ID}:${GITHUB_SHA}:${GITHUB_RUN_ID}" | sha256sum | cut -d' ' -f1)
+SESSION_FILE=".claude/sessions/${IDEMPOTENCY_KEY}"
+```
+
+### 4. Structured Known-Issues Schema
+
+**Current**: String matching with grep  
+**Improved**: Context-aware issue detection
+
+```json
+{
+  "schema_version": "1.0",
+  "known_issues": [
+    {
+      "id": "atomic-spinlock-m68k",
+      "phase": "rust-target",
+      "cpu_variants": ["m68030", "m68040"],
+      "error_pattern": "undefined reference to __sync_val_compare_and_swap",
+      "auto_fix": {
+        "type": "apply_patch",
+        "script": "ci/scripts/fixes/implement-spinlock.sh"
+      },
+      "confidence": 0.95
+    }
+  ]
+}
+```
+
+### 5. Environment Setup Decoupling
+
+**Problem**: Matrix variables scattered across workflow  
+**Solution**: Centralized environment setup
+
+```bash
+#!/usr/bin/env bash
+# ci/scripts/setup-env.sh
+set -euo pipefail
+
+# Export all matrix variables
+echo "CPU_VARIANT=${CPU_VARIANT:-${{ matrix.cpu_variant }}}" >> "$GITHUB_ENV"
+echo "OS_NAME=${OS_NAME:-${{ matrix.os }}}" >> "$GITHUB_ENV"
+echo "RUST_PROFILE=${RUST_PROFILE:-${{ matrix.rust_profile }}}" >> "$GITHUB_ENV"
+
+# Export CI context
+echo "COMMIT_SHA=${{ github.sha }}" >> "$GITHUB_ENV"
+echo "RUN_ID=${{ github.run_id }}" >> "$GITHUB_ENV"
+echo "RUN_ATTEMPT=${{ github.run_attempt }}" >> "$GITHUB_ENV"
+```
+
+### 6. Observability & Metrics
+
+**Metrics Collection**:
+```bash
+# In dispatcher.d/common/metrics.sh
+emit_metric() {
+    local metric=$1
+    local value=$2
+    echo "::notice title=Metric::${metric}=${value}"
+    
+    # Optional: Send to StatsD
+    if [[ -n "${STATSD_HOST:-}" ]]; then
+        echo "${metric}:${value}|c" | nc -w1 -u "$STATSD_HOST" 8125
+    fi
+}
+
+# Usage
+emit_metric "hook.${HOOK_TYPE}.duration" "$((SECONDS))"
+emit_metric "phase.${CURRENT_PHASE}.builds" 1
+```
+
+**Dashboard Integration**:
+- Grafana dashboards for phase duration trends
+- Alert on p95 hook execution time > threshold
+- Track failure rates by phase/matrix combo
+
+### 7. Security & Reliability Enhancements
+
+**Token Rotation Automation**:
+```yaml
+# .github/workflows/security-reminders.yml
+name: Security Reminders
+on:
+  schedule:
+    - cron: '0 9 1 * *'  # First Monday of month at 9 AM
+jobs:
+  token-rotation-reminder:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '🔐 Monthly Token Rotation Reminder',
+              body: 'Time to rotate:\n- [ ] O3_TOKEN\n- [ ] GEMINI_TOKEN\n\nSee [token rotation guide](docs/security/token-rotation.md)',
+              labels: ['security', 'maintenance']
+            })
+```
+
+**Lock Timeout Protection**:
+```python
+# In status-append.py
+try:
+    # Acquire lock with timeout
+    start_time = time.time()
+    while True:
+        try:
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            break
+        except IOError:
+            if time.time() - start_time > 5:  # 5 second timeout
+                raise TimeoutError("Could not acquire status lock after 5 seconds")
+            time.sleep(0.1)
+```
+
+## Implementation Timeline
+
+| Week | Focus | Deliverables |
+|------|-------|--------------|
+| 1 | Dispatcher modularization | `dispatcher.d/` structure, unit tests with bats-core |
+| 2 | Robustness improvements | Composite keys, env setup script, lock timeouts |
+| 3 | Status management | Rotation job, archive support, updated dashboards |
+| 4 | Issue detection | Known-issues schema, contextual matching |
+| 5 | Observability | Metrics emission, Grafana dashboards, alerting |
+
+## Testing Strategy
+
+### Unit Tests (bats-core)
+```bash
+# tests/dispatcher.bats
+@test "pre-tool-use validates LLVM build" {
+    export HOOK_TYPE="pre"
+    export COMMAND="build-custom-llvm.sh"
+    run ./hooks/dispatcher.sh pre <<< '{"tool_name":"Bash","tool_args":{"command":"build-custom-llvm.sh"}}'
+    [ "$status" -eq 0 ]
+}
+```
+
+### Integration Tests
+```bash
+# ci/scripts/test-pipeline.sh
+#!/usr/bin/env bash
+# Dry-run mode for testing pipeline without side effects
+export DRY_RUN=1
+export SKIP_EXTERNAL_APIS=1
+
+# Simulate various scenarios
+./hooks/dispatcher.sh pre <<< "$PRE_PAYLOAD"
+./hooks/dispatcher.sh post <<< "$POST_SUCCESS_PAYLOAD"
+./hooks/dispatcher.sh post <<< "$POST_FAILURE_PAYLOAD"
+```
+
 ## Future Enhancements
 
-1. **Distributed Builds**: Parallelize LLVM compilation
-2. **Predictive Failures**: ML model on historical data
-3. **Auto-Rollback**: Revert on critical failures
-4. **Performance Profiling**: Instrument hot paths
+1. **Distributed Builds**: Parallelize LLVM compilation across runners
+2. **Predictive Failures**: ML model trained on historical pipeline data
+3. **Auto-Rollback**: Revert commits that consistently fail after retries
+4. **Performance Profiling**: Flame graphs for slow pipeline steps
+5. **ChatOps Integration**: Slack/Discord commands to trigger pipeline actions
 
 ## Conclusion
 

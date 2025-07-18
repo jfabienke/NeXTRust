@@ -1,0 +1,130 @@
+#!/usr/bin/env python3
+"""
+ci/scripts/match-known-issue.py - Match errors against known issues with context
+
+Purpose: Find matching known issue based on error text and context
+Usage: python match-known-issue.py <error_text> <context_json>
+Returns: 0 and prints matching issue JSON if found, 1 if no match
+"""
+
+import json
+import re
+import sys
+from pathlib import Path
+from typing import Dict, List, Optional
+
+def load_known_issues() -> List[Dict]:
+    """Load known issues database."""
+    path = Path("docs/ci-status/known-issues.json")
+    if not path.exists():
+        return []
+    
+    try:
+        with open(path) as f:
+            data = json.load(f)
+        return data.get("known_issues", [])
+    except (json.JSONDecodeError, KeyError) as e:
+        print(f"Error loading known issues: {e}", file=sys.stderr)
+        return []
+
+def calculate_match_score(issue: Dict, error_text: str, context: Dict) -> float:
+    """Calculate match score for an issue (0.0 to 1.0)."""
+    score = 0.0
+    max_score = 0.0
+    
+    # Error pattern match (required, weight: 0.4)
+    max_score += 0.4
+    if re.search(issue["error_pattern"], error_text, re.IGNORECASE | re.MULTILINE):
+        score += 0.4
+    else:
+        # No error pattern match = no match
+        return 0.0
+    
+    # Phase match (weight: 0.2)
+    if "phase" in issue and "phase" in context:
+        max_score += 0.2
+        if context["phase"] == issue["phase"]:
+            score += 0.2
+    
+    # CPU variant match (weight: 0.2)
+    if "cpu_variants" in issue and "cpu_variant" in context:
+        max_score += 0.2
+        if context["cpu_variant"] in issue["cpu_variants"]:
+            score += 0.2
+    
+    # Context pattern matches (weight: 0.2)
+    if "context_patterns" in issue and "full_output" in context:
+        max_score += 0.2
+        context_text = context["full_output"]
+        matched_patterns = 0
+        total_patterns = len(issue["context_patterns"])
+        
+        for pattern in issue["context_patterns"]:
+            if re.search(pattern, context_text, re.IGNORECASE | re.MULTILINE):
+                matched_patterns += 1
+        
+        if total_patterns > 0:
+            score += 0.2 * (matched_patterns / total_patterns)
+    
+    # Normalize score
+    return score / max_score if max_score > 0 else 0.0
+
+def match_issue(error_text: str, context: Dict) -> Optional[Dict]:
+    """Find best matching known issue."""
+    issues = load_known_issues()
+    
+    if not issues:
+        return None
+    
+    # Calculate scores for all issues
+    scored_issues = []
+    for issue in issues:
+        score = calculate_match_score(issue, error_text, context)
+        if score > 0:
+            scored_issues.append((score, issue))
+    
+    if not scored_issues:
+        return None
+    
+    # Sort by score (descending) and return best match
+    scored_issues.sort(key=lambda x: x[0], reverse=True)
+    best_score, best_issue = scored_issues[0]
+    
+    # Require minimum confidence threshold
+    confidence_threshold = 0.6
+    if best_score >= confidence_threshold:
+        # Add match score to result
+        result = best_issue.copy()
+        result["match_score"] = best_score
+        return result
+    
+    return None
+
+def main():
+    if len(sys.argv) < 3:
+        print("Usage: match-known-issue.py <error_text> <context_json>", file=sys.stderr)
+        sys.exit(1)
+    
+    error_text = sys.argv[1]
+    
+    try:
+        context = json.loads(sys.argv[2])
+    except json.JSONDecodeError as e:
+        print(f"Invalid context JSON: {e}", file=sys.stderr)
+        sys.exit(1)
+    
+    # Debug output if requested
+    if context.get("debug"):
+        print(f"[DEBUG] Error text: {error_text[:100]}...", file=sys.stderr)
+        print(f"[DEBUG] Context: {json.dumps(context, indent=2)}", file=sys.stderr)
+    
+    match = match_issue(error_text, context)
+    
+    if match:
+        print(json.dumps(match, indent=2))
+        sys.exit(0)
+    else:
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()

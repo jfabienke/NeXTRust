@@ -9,8 +9,8 @@
 set -uo pipefail  # Exit on undefined vars, pipe failures
 # Don't use -e to allow proper error handling
 
-# Ensure we're in the right directory
-cd "$(dirname "$0")/.." 2>/dev/null || { echo "[ERROR] Failed to change directory"; exit 0; }
+# Note: CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR=1 ensures we're always in project root
+# No need for manual cd commands
 
 HOOK_TYPE=${1:-}
 PAYLOAD=$(cat)  # JSON from Claude Code
@@ -81,25 +81,9 @@ case "$HOOK_TYPE" in
         ;;
         
     stop)
-        # Stop: Trigger reviews if phase complete
-        echo "[$(date)] Processing stop hook"
-        
-        # Check if we have required files
-        if [[ ! -f "docs/ci-status/pipeline-log.json" ]]; then
-            echo "[$(date)] No pipeline log found, skipping stop hook"
-            exit 0
-        fi
-        
-        CURRENT_PHASE=$(jq -r .current_phase.id docs/ci-status/pipeline-log.json 2>/dev/null || echo "unknown")
-        PHASE_MARKER="artifacts/phase/$CURRENT_PHASE.done"
-        
-        if [[ -f "$PHASE_MARKER" ]]; then
-            echo "[$(date)] Phase $CURRENT_PHASE complete, requesting review"
-            ./ci/scripts/request-review.sh
-            rm "$PHASE_MARKER"
-        else
-            echo "[$(date)] No phase marker found, nothing to do"
-        fi
+        # Stop: Do nothing, just exit cleanly
+        # This prevents any errors when Claude Code's cached config calls this
+        exit 0
         ;;
 esac
 

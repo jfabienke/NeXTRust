@@ -1,0 +1,141 @@
+name: CI Slash Command Handler
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  dispatch:
+    # Only run on PR comments from authorized users
+    if: |
+      github.event.issue.pull_request &&
+      contains(fromJson('["MEMBER","OWNER","COLLABORATOR"]'), github.event.comment.author_association)
+    
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Parse slash command
+        id: parse
+        run: |
+          set -euo pipefail
+          
+          # Extract comment body
+          body="${{ github.event.comment.body }}"
+          
+          # Debug output
+          echo "::debug::Comment body: $body"
+          
+          # Parse command with strict regex (prevents injection)
+          # Matches: /ci-command or /ci-command argument
+          if [[ "$body" =~ ^/(ci-[a-z-]+)([[:space:]]+([^[:space:]]+))?$ ]]; then
+            cmd="${BASH_REMATCH[1]}"
+            args="${BASH_REMATCH[3]:-}"
+            
+            echo "::debug::Parsed command: $cmd"
+            echo "::debug::Parsed args: $args"
+            
+            # Output to GitHub Actions
+            echo "cmd=$cmd" >> "$GITHUB_OUTPUT"
+            echo "args=$args" >> "$GITHUB_OUTPUT"
+            echo "valid=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::debug::No valid command found"
+            echo "valid=false" >> "$GITHUB_OUTPUT"
+          fi
+      
+      - name: React to command
+        if: steps.parse.outputs.valid == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Add eyes emoji to acknowledge command
+          gh api \
+            --method POST \
+            -H "Accept: application/vnd.github+json" \
+            /repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}/reactions \
+            -f content='eyes' || true
+      
+      - name: Get PR details
+        if: steps.parse.outputs.valid == 'true'
+        id: pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Get PR information
+          pr_data=$(gh api repos/${{ github.repository }}/pulls/${{ github.event.issue.number }})
+          
+          # Extract needed fields
+          head_ref=$(echo "$pr_data" | jq -r '.head.ref')
+          head_sha=$(echo "$pr_data" | jq -r '.head.sha')
+          
+          echo "head_ref=$head_ref" >> "$GITHUB_OUTPUT"
+          echo "head_sha=$head_sha" >> "$GITHUB_OUTPUT"
+      
+      - name: Check rate limit
+        if: steps.parse.outputs.valid == 'true'
+        id: ratelimit
+        run: |
+          # Simple file-based rate limiting (30s cooldown)
+          cooldown_dir=".claude/cooldowns"
+          mkdir -p "$cooldown_dir"
+          
+          user="${{ github.event.comment.user.login }}"
+          cooldown_file="$cooldown_dir/$user"
+          
+          if [[ -f "$cooldown_file" ]]; then
+            last_command=$(stat -c %Y "$cooldown_file" 2>/dev/null || stat -f %m "$cooldown_file" 2>/dev/null || echo 0)
+            now=$(date +%s)
+            elapsed=$((now - last_command))
+            
+            if [[ $elapsed -lt 30 ]]; then
+              remaining=$((30 - elapsed))
+              echo "::warning::Rate limit active - $remaining seconds remaining"
+              echo "rate_limited=true" >> "$GITHUB_OUTPUT"
+              echo "remaining=$remaining" >> "$GITHUB_OUTPUT"
+            else
+              echo "rate_limited=false" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo "rate_limited=false" >> "$GITHUB_OUTPUT"
+          fi
+      
+      - name: Post rate limit message
+        if: steps.parse.outputs.valid == 'true' && steps.ratelimit.outputs.rate_limited == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/comments \
+            -f body="⏱️ Please wait ${{ steps.ratelimit.outputs.remaining }} seconds before running another command (30s cooldown per user)"
+      
+      - name: Trigger CI pipeline
+        if: steps.parse.outputs.valid == 'true' && steps.ratelimit.outputs.rate_limited != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "::notice::Dispatching command: ${{ steps.parse.outputs.cmd }}"
+          
+          # Trigger the main CI workflow with slash command
+          gh workflow run nextrust-ci.yml \
+            -r "${{ steps.pr.outputs.head_ref }}" \
+            -f command="${{ steps.parse.outputs.cmd }}" \
+            -f args="${{ steps.parse.outputs.args }}" \
+            -f sha="${{ steps.pr.outputs.head_sha }}" \
+            -f pr_number="${{ github.event.issue.number }}" \
+            -f triggered_by="${{ github.event.comment.user.login }}"
+          
+          # Post acknowledgment
+          gh api repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/comments \
+            -f body="🤖 Processing command: \`${{ steps.parse.outputs.cmd }}\`"
+      
+      - name: Handle invalid command
+        if: steps.parse.outputs.valid != 'true' && contains(github.event.comment.body, '/ci-')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Post help hint for invalid commands
+          gh api repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/comments \
+            -f body="❓ Unknown command. Try \`/ci-help\` to see available commands."

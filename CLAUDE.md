@@ -6,6 +6,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 NeXTRust is a Rust cross-compilation project targeting the historic NeXTSTEP operating system on m68k architecture. The project enables Rust development for the NeXT platform through custom LLVM toolchain modifications and Mach-O format support.
 
+<!-- PEER REVIEW: Inserted 'Assistant persona' section for tighter grounding as per latest Claude Code best practices. -->
+### Assistant persona
+You are Claude Code (Opus) acting as a senior Rust+LLVM build engineer. Your primary responsibilities are code implementation, scripting, and ensuring builds conform to the project's unique cross-compilation requirements.
+
+## Environment Configuration
+
+### Working Directory Management
+Set this environment variable to ensure Claude Code always executes commands from the project root:
+```bash
+export CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR=1
+```
+This prevents accidental directory changes and eliminates the need for manual `cd` commands in scripts.
+
 ## Key Commands
 
 ### Development Environment Setup
@@ -65,6 +78,10 @@ python agents/tools/mcp-query.py
 ./.github/workflows/build-llvm.yml
 ./.github/workflows/test-rust-target.yml
 ./.github/workflows/emulator-harness.yml
+
+# <!-- PEER REVIEW: Added link to slash command help to make Claude aware of human-facing tools. -->
+# List available CI slash commands
+./ci/scripts/slash/ci-help.sh
 ```
 
 ## Architecture Overview
@@ -96,8 +113,10 @@ python agents/tools/mcp-query.py
 4. **Agent System**: Multi-model AI workflow
    - Grok 4 for orchestration
    - OpenAI o3 for design blueprints
-   - Gemini 2.5 Pro for code reviews
+   - Gemini 2.5 Pro for code reviews (see `GEMINI.md` for guidelines)
    - Claude Opus for implementation tasks
+<!-- PEER REVIEW: Added `ccusage` reminder to integrate cost-tracking into the agent's workflow. -->
+   - After completing a session, call `ccusage --session-id ...` and log output via `status-append.py`.
 
 ### Development Workflow
 
@@ -116,6 +135,45 @@ python agents/tools/mcp-query.py
 - Target triple: m68k-next-nextstep
 - ROM images required: Rev 2.5 v66 (68040) or Rev 1.x (68030)
 - Estimated timeline: 10-20 days for minimal viable target
+<!-- PEER REVIEW: Added token boundary hint as a guard-rail for large context windows. -->
+- If an included diff or file exceeds 150k tokens, summarise unchanged code blocks first to conserve context.
+
+## File Management Guidelines
+
+### CRITICAL: File Creation Rules
+
+1. **ALWAYS prefer editing existing files over creating new ones**
+   - Search for existing files that serve similar purposes
+   - Check if functionality can be added to existing modules
+   - Only create new files when they provide clear architectural value
+
+2. **NEVER create files in the root directory** unless explicitly requested:
+   - Configuration files (.gitignore, requirements.txt) - only if missing
+   - README.md - already exists, always edit instead
+   - New scripts belong in appropriate subdirectories
+
+3. **Before creating any new file, verify**:
+   - No existing file serves this purpose
+   - The file location follows project structure conventions
+   - The file is necessary for the requested functionality
+
+4. **Documentation files**:
+   - NEVER create new .md files unless explicitly requested
+   - Always check docs/ subdirectories for existing documentation to update
+   - Prefer updating existing docs over creating new ones
+
+5. **Temporary files**:
+   - Use /tmp or designated temp directories
+   - Never leave test files in the project root
+   - Clean up any temporary files created during testing
+
+### Project Structure for New Files
+When new files ARE necessary, follow this structure:
+- Scripts: `ci/scripts/` or `ci/scripts/tools/`
+- Hooks: `hooks/dispatcher.d/<phase>/`
+- Documentation: `docs/<category>/`
+- Configuration: Project root ONLY if standard (e.g., .gitignore)
+- Tests: `tests/` or alongside the code being tested
 
 ## Working with the Codebase
 
@@ -140,4 +198,5 @@ When implementing features:
 - **LLVM Enhancements**: docs/llvm-enhancements.md
 - **Library Porting Guide**: docs/library-porting.md
 
-Last updated: 2025-07-15 10:00 AM
+<!-- PEER REVIEW: Added freshness lint comment to enable automated staleness checks in CI. -->
+Last updated: 2025-07-18 4:30 PM <!-- AUTO-UPDATE-HORIZON:90d -->

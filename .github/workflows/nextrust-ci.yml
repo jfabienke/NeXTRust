@@ -1,8 +1,67 @@
 name: NeXTRust CI
-on: [push, pull_request]
+on: 
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      command:
+        description: 'Slash command to execute'
+        required: false
+        type: string
+      args:
+        description: 'Command arguments'
+        required: false
+        type: string
+      sha:
+        description: 'Commit SHA to build'
+        required: false
+        type: string
+      pr_number:
+        description: 'PR number for response'
+        required: false
+        type: string
+      triggered_by:
+        description: 'User who triggered the command'
+        required: false
+        type: string
+
+env:
+  CI_CONFIG_VERSION: 2.1
+  # OpenAI API Configuration (from secrets)
+  O3_ENDPOINT: ${{ secrets.O3_ENDPOINT }}
+  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
 jobs:
+  # Handle slash commands separately
+  slash-command:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.command != '' }}
+    runs-on: ubuntu-latest
+    env:
+      CI_COMMAND: ${{ inputs.command }}
+      CI_ARGS: ${{ inputs.args }}
+      CI_PR_NUMBER: ${{ inputs.pr_number }}
+      CI_TRIGGERED_BY: ${{ inputs.triggered_by }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.sha }}
+      
+      - name: Setup Environment
+        run: |
+          chmod +x ci/scripts/*.sh
+          chmod +x hooks/*.sh
+          ci/scripts/setup-env.sh
+      
+      - name: Execute Slash Command
+        run: |
+          # The dispatcher will detect CI_COMMAND and route appropriately
+          ./hooks/dispatcher-v2.sh slash-command
+      
   build-matrix:
+    # Skip for slash command executions
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.command == '' }}
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
@@ -13,17 +72,19 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       O3_ENDPOINT: ${{ secrets.O3_ENDPOINT }}
-      GEMINI_ENDPOINT: ${{ secrets.GEMINI_ENDPOINT }}
-      O3_TOKEN: ${{ secrets.O3_TOKEN }}
-      GEMINI_TOKEN: ${{ secrets.GEMINI_TOKEN }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
     
     steps:
       - uses: actions/checkout@v4
       
-      - name: Export Matrix Variables
+      - name: Setup Environment
         run: |
-          echo "CPU_VARIANT=${{ matrix.cpu_variant }}" >> $GITHUB_ENV
-          echo "OS_NAME=${{ matrix.os }}" >> $GITHUB_ENV
+          # Export matrix variables and CI context
+          export CPU_VARIANT="${{ matrix.cpu_variant }}"
+          export OS_NAME="${{ matrix.os }}"
+          export RUST_PROFILE="${{ matrix.rust_profile }}"
+          ci/scripts/setup-env.sh
       
       - name: Setup Claude Code Environment
         run: |
@@ -84,12 +145,27 @@ jobs:
       - name: Update GitHub Checks
         if: always()
         run: |
-          JOB_OUTCOME="${{ job.status }}"
+          # Map job status to proper conclusion
+          case "${{ job.status }}" in
+            success)
+              CONCLUSION="success"
+              ;;
+            failure)
+              CONCLUSION="failure"
+              ;;
+            cancelled)
+              CONCLUSION="cancelled"
+              ;;
+            *)
+              CONCLUSION="neutral"
+              ;;
+          esac
+          
           ci/scripts/github-checks-update.sh \
             --status "${{ job.status }}" \
             --phase "$(jq -r .current_phase.id docs/ci-status/pipeline-log.json 2>/dev/null || echo 'unknown')" \
             --matrix "${{ matrix.os }}-${{ matrix.rust_profile }}-${{ matrix.cpu_variant }}" \
-            --outcome "$JOB_OUTCOME"
+            --conclusion "$CONCLUSION"
           
           # Record artifact hashes for traceability
           if [[ "${{ job.status }}" == "success" ]]; then

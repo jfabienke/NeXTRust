@@ -1,0 +1,111 @@
+name: Lint AI Guidance Files
+on:
+  pull_request:
+    paths:
+      - 'CLAUDE.md'
+      - 'GEMINI.md'
+      - 'ci/scripts/lint-*.sh'
+  push:
+    branches: [main]
+    paths:
+      - 'CLAUDE.md'
+      - 'GEMINI.md'
+  schedule:
+    # Run weekly to catch staleness
+    - cron: '0 9 * * 1'  # Monday at 9 AM UTC
+
+jobs:
+  lint-guidance:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Lint CLAUDE.md
+        id: lint-claude
+        run: |
+          chmod +x ci/scripts/lint-claude-md.sh
+          if ci/scripts/lint-claude-md.sh; then
+            echo "claude_status=pass" >> $GITHUB_OUTPUT
+          else
+            echo "claude_status=fail" >> $GITHUB_OUTPUT
+            echo "::warning file=CLAUDE.md::CLAUDE.md needs attention"
+          fi
+      
+      - name: Lint GEMINI.md
+        id: lint-gemini
+        run: |
+          chmod +x ci/scripts/lint-gemini-md.sh
+          if ci/scripts/lint-gemini-md.sh; then
+            echo "gemini_status=pass" >> $GITHUB_OUTPUT
+          else
+            echo "gemini_status=fail" >> $GITHUB_OUTPUT
+            echo "::warning file=GEMINI.md::GEMINI.md needs attention"
+          fi
+      
+      - name: Create issue if files are stale
+        if: |
+          github.event_name == 'schedule' && 
+          (steps.lint-claude.outputs.claude_status == 'fail' || 
+           steps.lint-gemini.outputs.gemini_status == 'fail')
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const failures = [];
+            if ('${{ steps.lint-claude.outputs.claude_status }}' === 'fail') {
+              failures.push('CLAUDE.md');
+            }
+            if ('${{ steps.lint-gemini.outputs.gemini_status }}' === 'fail') {
+              failures.push('GEMINI.md');
+            }
+            
+            const title = `⚠️ AI guidance files need review: ${failures.join(', ')}`;
+            const body = `The following AI guidance files have exceeded their update horizon and need review:
+            
+            ${failures.map(f => `- **${f}**: Run \`./ci/scripts/lint-${f.toLowerCase().replace('.md', '-md')}.sh\` for details`).join('\n')}
+            
+            Please:
+            1. Review the current guidelines for accuracy
+            2. Update any outdated sections
+            3. Update the last modified date
+            4. Consider incrementing version numbers if significant changes were made
+            
+            These files guide our AI agents, so keeping them current is critical for system effectiveness.
+            
+            This is an automated reminder from the weekly maintenance job.`;
+            
+            // Check if issue already exists
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: 'documentation,maintenance',
+              state: 'open'
+            });
+            
+            const existing = issues.data.find(i => i.title.includes('AI guidance files need review'));
+            
+            if (!existing) {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+                labels: ['documentation', 'maintenance', 'ai-guidance']
+              });
+            } else {
+              // Update existing issue
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                body: body + `\n\n---\n*Updated: ${new Date().toISOString()}*`
+              });
+            }
+      
+      - name: Check overall status
+        if: |
+          steps.lint-claude.outputs.claude_status == 'fail' || 
+          steps.lint-gemini.outputs.gemini_status == 'fail'
+        run: |
+          echo "One or more AI guidance files failed linting"
+          exit 1

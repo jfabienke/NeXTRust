@@ -1,16 +1,80 @@
 {
+  "schema_version": "1.0",
+  "last_updated": "2025-01-17",
   "known_issues": [
     {
-      "error": "undefined reference to __sync_val_compare_and_swap",
+      "id": "atomic-spinlock-m68k",
+      "phase": "phase-3",
       "category": "atomics",
-      "solution": "Implement spinlock-based atomics in compiler-rt",
-      "affected_phases": ["phase-3"]
+      "cpu_variants": ["m68030", "m68040"],
+      "error_pattern": "undefined reference to __sync_val_compare_and_swap",
+      "context_patterns": [
+        "compiler-rt.*atomic",
+        "libcore.*sync",
+        "rustc_target.*m68k"
+      ],
+      "description": "M68k lacks native atomic operations, requires spinlock implementation",
+      "auto_fix": {
+        "type": "apply_patch",
+        "script": "ci/scripts/fixes/implement-spinlock.sh",
+        "confidence": 0.95
+      },
+      "metadata": {
+        "first_seen": "2025-01-15",
+        "occurrences": 12,
+        "last_fix_success": "2025-01-16",
+        "references": [
+          "docs/llvm-enhancements.md#atomic-operations"
+        ]
+      }
     },
     {
-      "error": "SIGILL",
+      "id": "sigill-cpu-variant",
+      "phase": "phase-4",
       "category": "cpu_variant",
-      "solution": "Check CPU variant flags match target hardware",
-      "affected_phases": ["phase-4", "phase-5"]
+      "cpu_variants": ["m68030"],
+      "error_pattern": "SIGILL|Illegal instruction",
+      "context_patterns": [
+        "emulator.*Previous",
+        "test.*hello-world"
+      ],
+      "description": "CPU variant mismatch between build flags and emulator settings",
+      "auto_fix": {
+        "type": "verify_flags",
+        "script": "ci/scripts/fixes/verify-cpu-flags.sh",
+        "confidence": 0.85
+      },
+      "metadata": {
+        "first_seen": "2025-01-16",
+        "occurrences": 5,
+        "last_fix_success": null,
+        "notes": "Usually happens when 68040 instructions are used on 68030"
+      }
+    },
+    {
+      "id": "llvm-triple-unrecognized",
+      "phase": "phase-2",
+      "category": "toolchain",
+      "cpu_variants": ["m68030", "m68040"],
+      "error_pattern": "error: unknown target triple 'm68k-next-nextstep'",
+      "context_patterns": [
+        "llvm.*Triple",
+        "clang.*target"
+      ],
+      "description": "LLVM doesn't recognize NeXTSTEP triple without patches",
+      "auto_fix": {
+        "type": "check_patches",
+        "script": "ci/scripts/fixes/check-llvm-patches.sh",
+        "confidence": 1.0
+      },
+      "metadata": {
+        "first_seen": "2025-01-14",
+        "occurrences": 8,
+        "last_fix_success": "2025-01-15",
+        "references": [
+          "patches/llvm/0001-add-nextstep-triple.patch"
+        ]
+      }
     }
   ]
 }

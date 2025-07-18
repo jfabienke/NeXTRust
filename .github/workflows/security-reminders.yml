@@ -1,0 +1,75 @@
+name: Security Reminders
+on:
+  schedule:
+    - cron: '0 9 1 * *'  # First day of month at 9 AM UTC
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  token-rotation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '🔐 Monthly Token Rotation Reminder',
+              body: `## Token Rotation Checklist
+              
+              Please rotate the following tokens:
+              - [ ] \`O3_TOKEN\` - OpenAI API token for design decisions
+              - [ ] \`GEMINI_TOKEN\` - Google Gemini API token for reviews
+              
+              ### Steps:
+              1. Generate new tokens in respective dashboards:
+                 - [OpenAI API Keys](https://platform.openai.com/api-keys)
+                 - [Google AI Studio](https://makersuite.google.com/app/apikey)
+              2. Update GitHub Secrets:
+                 - Go to Settings → Secrets and variables → Actions
+                 - Update \`O3_TOKEN\` and \`GEMINI_TOKEN\`
+              3. Test CI pipeline with new tokens:
+                 - Trigger a test workflow run
+                 - Verify external API calls succeed
+              4. Close this issue when complete
+              
+              ### Security Notes:
+              - Tokens should be rotated monthly to maintain security posture
+              - Never commit tokens to the repository
+              - Use least-privilege scopes when generating tokens
+              
+              **Due Date**: ${new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
+              
+              /cc @johnfabienke`,
+              labels: ['security', 'maintenance', 'priority:high'],
+              assignees: ['johnfabienke']
+            });
+            
+            console.log(\`Created security reminder issue: \${issue.data.html_url}\`);
+            
+            // Also create a reminder for other maintenance tasks
+            const maintenanceIssue = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '🔧 Monthly CI Maintenance Checklist',
+              body: \`## Monthly Maintenance Tasks
+              
+              - [ ] Review and clean old CI artifacts
+              - [ ] Check pipeline performance metrics
+              - [ ] Update dependencies if needed
+              - [ ] Review known issues list for outdated entries
+              - [ ] Verify backup procedures are working
+              
+              ### Metrics to Review:
+              - Average build time trends
+              - Failure rates by phase
+              - Hook execution times (p95)
+              - Cache hit rates
+              
+              See [CI Dashboard](../../monitoring/dashboards/ci-pipeline.json) for details.
+              
+              /cc @johnfabienke\`,
+              labels: ['maintenance', 'ci/cd']
+            });
+            
+            console.log(\`Created maintenance reminder issue: \${maintenanceIssue.data.html_url}\`);

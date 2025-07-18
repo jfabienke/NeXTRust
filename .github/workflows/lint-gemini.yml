@@ -1,0 +1,63 @@
+name: Lint GEMINI.md
+on:
+  pull_request:
+    paths:
+      - 'GEMINI.md'
+      - 'ci/scripts/lint-gemini-md.sh'
+  push:
+    branches: [main]
+    paths:
+      - 'GEMINI.md'
+  schedule:
+    # Run weekly to catch staleness
+    - cron: '0 9 * * 1'  # Monday at 9 AM UTC
+
+jobs:
+  lint-gemini:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Lint GEMINI.md
+        run: |
+          chmod +x ci/scripts/lint-gemini-md.sh
+          ci/scripts/lint-gemini-md.sh
+      
+      - name: Create issue if stale
+        if: failure() && github.event_name == 'schedule'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = '⚠️ GEMINI.md is stale and needs review';
+            const body = `The GEMINI.md file has exceeded its update horizon and needs review.
+            
+            Please:
+            1. Review the current guidelines for accuracy
+            2. Update any outdated sections
+            3. Update the LAST-MODIFIED date
+            4. Increment the version if significant changes were made
+            
+            Run locally: \`./ci/scripts/lint-gemini-md.sh\`
+            
+            This is an automated reminder to ensure our AI reviewer guidelines stay current.`;
+            
+            // Check if issue already exists
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: 'documentation,maintenance',
+              state: 'open'
+            });
+            
+            const existing = issues.data.find(i => i.title === title);
+            
+            if (!existing) {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+                labels: ['documentation', 'maintenance']
+              });
+            }

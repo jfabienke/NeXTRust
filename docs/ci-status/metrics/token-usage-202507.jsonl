@@ -1,0 +1,4 @@
+{"timestamp":"2025-07-18T05:51:39Z","session_id":"test-session-123","model":"claude-3-5-sonnet","phase":"unknown","user":"johnfabienke","tokens":{"input":5000,"output":2000,"total":7000},"cost_usd":{"input":0.015000,"output":0.030000,"total":0.045000},"type":"usage_captured"}
+{"timestamp":"2025-07-18T05:52:16Z","session_id":"test-session-123","model":"claude-3-5-sonnet","phase":"unknown","user":"johnfabienke","tokens":{"input":5000,"output":2000,"total":7000},"cost_usd":{"input":0.015000,"output":0.030000,"total":0.045000},"type":"usage_captured"}
+{"timestamp":"2025-07-18T15:30:42Z","session_id":"test-success","model":"claude-3-5-sonnet","phase":"test-phase","user":"johnfabienke","tokens":{"input":1000,"output":500,"total":1500},"cost_usd":{"input":0.003000,"output":0.007500,"total":0.010500},"type":"usage_captured"}
+{"timestamp":"2025-07-18T15:30:42Z","session_id":"test-fail","error":"ccusage_failed","exit_code":1,"type":"capture_failure"}

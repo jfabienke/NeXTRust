@@ -1,0 +1,68 @@
+{
+  "last_updated": "2025-07-18 5:55 PM",
+  "currency": "USD",
+  "prices_per_million_tokens": {
+    "claude-3-5-sonnet": {
+      "input": 3.00,
+      "output": 15.00,
+      "description": "Claude 3.5 Sonnet - balanced performance"
+    },
+    "claude-3-opus": {
+      "input": 15.00,
+      "output": 75.00,
+      "description": "Claude 3 Opus - highest capability"
+    },
+    "claude-3-haiku": {
+      "input": 0.25,
+      "output": 1.25,
+      "description": "Claude 3 Haiku - fastest and most affordable"
+    },
+    "claude-2.1": {
+      "input": 8.00,
+      "output": 24.00,
+      "description": "Claude 2.1 - previous generation"
+    },
+    "openai-o3": {
+      "input": 2.00,
+      "output": 8.00,
+      "cached_input": 1.50,
+      "description": "OpenAI O3 - Advanced reasoning model for complex design decisions"
+    },
+    "gemini-2.5-pro": {
+      "input": 1.25,
+      "output": 10.00,
+      "input_extended": 2.50,
+      "output_extended": 15.00,
+      "cli_input": 0.00,
+      "cli_output": 0.00,
+      "cli_rate_limits": {
+        "requests_per_day": 1000,
+        "requests_per_minute": 60
+      },
+      "description": "Gemini 2.5 Pro - FREE via CLI (1000/day, 60/min) or paid via API"
+    }
+  },
+  "thresholds": {
+    "cost_per_session": {
+      "warning": 1.00,
+      "critical": 5.00
+    },
+    "cost_per_pr": {
+      "warning": 5.00,
+      "critical": 20.00
+    },
+    "cost_per_hour": {
+      "warning": 10.00,
+      "critical": 50.00
+    },
+    "cost_per_day": {
+      "warning": 50.00,
+      "critical": 200.00
+    }
+  },
+  "budget_alerts": {
+    "slack_webhook": "${SLACK_WEBHOOK_URL}",
+    "email_recipients": ["devops@nextrust.example.com"],
+    "enabled": true
+  }
+}

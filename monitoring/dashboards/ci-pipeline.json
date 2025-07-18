@@ -1,0 +1,163 @@
+{
+  "dashboard": {
+    "id": null,
+    "uid": "nextrust-ci",
+    "title": "NeXTRust CI Pipeline",
+    "tags": ["ci", "nextrust"],
+    "timezone": "utc",
+    "schemaVersion": 30,
+    "version": 1,
+    "refresh": "30s",
+    "panels": [
+      {
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 0
+        },
+        "id": 1,
+        "title": "Hook Execution Time (p95)",
+        "type": "graph",
+        "targets": [{
+          "expr": "histogram_quantile(0.95, sum(rate(hook_duration_ms_bucket{job='nextrust-ci'}[5m])) by (type, le))",
+          "legendFormat": "{{ type }} hook",
+          "refId": "A"
+        }],
+        "yaxes": [{
+          "format": "ms",
+          "label": "Duration"
+        }]
+      },
+      {
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 0
+        },
+        "id": 2,
+        "title": "Build Success Rate",
+        "type": "stat",
+        "targets": [{
+          "expr": "sum(rate(build_success_total[1h])) / sum(rate(build_total[1h])) * 100",
+          "legendFormat": "Success Rate",
+          "refId": "A"
+        }],
+        "options": {
+          "reduceOptions": {
+            "calcs": ["lastNotNull"]
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "red", "value": null},
+                {"color": "yellow", "value": 80},
+                {"color": "green", "value": 95}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "gridPos": {
+          "h": 8,
+          "w": 24,
+          "x": 0,
+          "y": 8
+        },
+        "id": 3,
+        "title": "Phase Progress",
+        "type": "bargauge",
+        "targets": [{
+          "expr": "phase_completion{project='nextrust'}",
+          "legendFormat": "{{ phase }}",
+          "refId": "A"
+        }],
+        "options": {
+          "orientation": "horizontal",
+          "displayMode": "gradient"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "min": 0,
+            "max": 100
+          }
+        }
+      },
+      {
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 16
+        },
+        "id": 4,
+        "title": "Failures by Phase",
+        "type": "piechart",
+        "targets": [{
+          "expr": "sum by (phase) (increase(build_failures_total[24h]))",
+          "legendFormat": "{{ phase }}",
+          "refId": "A"
+        }]
+      },
+      {
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 16
+        },
+        "id": 5,
+        "title": "Auto-Fix Success Rate",
+        "type": "timeseries",
+        "targets": [{
+          "expr": "rate(auto_fix_success_total[1h]) / rate(auto_fix_attempts_total[1h]) * 100",
+          "legendFormat": "Success Rate",
+          "refId": "A"
+        }],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "custom": {
+              "fillOpacity": 10,
+              "lineWidth": 2
+            }
+          }
+        }
+      },
+      {
+        "gridPos": {
+          "h": 8,
+          "w": 24,
+          "x": 0,
+          "y": 24
+        },
+        "id": 6,
+        "title": "External API Response Times",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(external_api_duration_ms_bucket{api='o3'}[5m])) by (le))",
+            "legendFormat": "OpenAI o3",
+            "refId": "A"
+          },
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(external_api_duration_ms_bucket{api='gemini'}[5m])) by (le))",
+            "legendFormat": "Google Gemini",
+            "refId": "B"
+          }
+        ],
+        "yaxes": [{
+          "format": "ms",
+          "label": "Response Time"
+        }]
+      }
+    ]
+  }
+}

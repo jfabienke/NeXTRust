@@ -1,0 +1,301 @@
+{
+  "dashboard": {
+    "id": null,
+    "uid": "nextrust-ci-slash",
+    "title": "NeXTRust CI Slash Commands Metrics",
+    "tags": ["ci", "nextrust", "slash-commands"],
+    "timezone": "utc",
+    "schemaVersion": 30,
+    "version": 1,
+    "refresh": "30s",
+    "panels": [
+      {
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 0
+        },
+        "id": 1,
+        "title": "Command Usage by Type",
+        "type": "piechart",
+        "targets": [{
+          "expr": "sum by (command) (increase(slash_command_total{job='nextrust-ci'}[24h]))",
+          "legendFormat": "{{ command }}",
+          "refId": "A"
+        }],
+        "options": {
+          "pieType": "donut",
+          "displayLabels": ["name", "value"],
+          "legendDisplayMode": "table",
+          "legendPlacement": "right"
+        }
+      },
+      {
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 0
+        },
+        "id": 2,
+        "title": "Unique Users per Week",
+        "type": "stat",
+        "targets": [{
+          "expr": "count(count by (user) (slash_command_total{job='nextrust-ci'}[7d]))",
+          "legendFormat": "Unique Users",
+          "refId": "A"
+        }],
+        "options": {
+          "reduceOptions": {
+            "calcs": ["lastNotNull"]
+          },
+          "textMode": "value",
+          "colorMode": "value"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "blue", "value": null},
+                {"color": "green", "value": 5},
+                {"color": "yellow", "value": 20}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "gridPos": {
+          "h": 8,
+          "w": 24,
+          "x": 0,
+          "y": 8
+        },
+        "id": 3,
+        "title": "Command Success Rate",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "sum(rate(slash_command_total{status='success'}[5m])) / sum(rate(slash_command_total[5m])) * 100",
+            "legendFormat": "Success Rate %",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "custom": {
+              "fillOpacity": 10,
+              "lineWidth": 2,
+              "spanNulls": true
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "red", "value": null},
+                {"color": "yellow", "value": 80},
+                {"color": "green", "value": 95}
+              ]
+            }
+          }
+        },
+        "options": {
+          "legend": {
+            "calcs": ["mean", "lastNotNull"],
+            "displayMode": "table",
+            "placement": "bottom"
+          }
+        }
+      },
+      {
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 16
+        },
+        "id": 4,
+        "title": "Time Saved by ci-retry-job",
+        "description": "Based on developer surveys",
+        "type": "gauge",
+        "targets": [{
+          "expr": "avg(ci_retry_time_saved_minutes{job='nextrust-ci'})",
+          "refId": "A"
+        }],
+        "options": {
+          "reduceOptions": {
+            "calcs": ["lastNotNull"]
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "m",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 30},
+                {"color": "red", "value": 60}
+              ]
+            },
+            "min": 0,
+            "max": 120
+          }
+        }
+      },
+      {
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 16
+        },
+        "id": 5,
+        "title": "Commands per PR",
+        "type": "histogram",
+        "targets": [{
+          "expr": "histogram_quantile(0.95, sum(rate(slash_commands_per_pr_bucket[1h])) by (le))",
+          "legendFormat": "p95 commands/PR",
+          "refId": "A"
+        }],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "custom": {
+              "lineWidth": 1,
+              "fillOpacity": 80
+            }
+          }
+        }
+      },
+      {
+        "gridPos": {
+          "h": 8,
+          "w": 24,
+          "x": 0,
+          "y": 24
+        },
+        "id": 6,
+        "title": "Rate Limit Hits",
+        "type": "timeseries",
+        "targets": [{
+          "expr": "sum(rate(slash_command_rate_limited_total[5m])) by (user)",
+          "legendFormat": "{{ user }}",
+          "refId": "A"
+        }],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "custom": {
+              "fillOpacity": 10,
+              "lineWidth": 1,
+              "drawStyle": "bars"
+            }
+          }
+        },
+        "options": {
+          "legend": {
+            "displayMode": "list",
+            "placement": "bottom"
+          }
+        }
+      },
+      {
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 32
+        },
+        "id": 7,
+        "title": "Most Active Users",
+        "type": "table",
+        "targets": [{
+          "expr": "topk(10, sum by (user) (increase(slash_command_total[7d])))",
+          "format": "table",
+          "instant": true,
+          "refId": "A"
+        }],
+        "options": {
+          "showHeader": true
+        },
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "align": "auto",
+              "displayMode": "auto"
+            }
+          },
+          "overrides": [
+            {
+              "matcher": {"id": "byName", "options": "user"},
+              "properties": [{"id": "displayName", "value": "User"}]
+            },
+            {
+              "matcher": {"id": "byName", "options": "Value"},
+              "properties": [{"id": "displayName", "value": "Commands (7d)"}]
+            }
+          ]
+        }
+      },
+      {
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 32
+        },
+        "id": 8,
+        "title": "Error Rate by Command",
+        "type": "bargauge",
+        "targets": [{
+          "expr": "sum by (command) (rate(slash_command_total{status='failed'}[1h])) / sum by (command) (rate(slash_command_total[1h])) * 100",
+          "legendFormat": "{{ command }}",
+          "refId": "A"
+        }],
+        "options": {
+          "orientation": "horizontal",
+          "displayMode": "gradient",
+          "showUnfilled": true
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 5},
+                {"color": "red", "value": 10}
+              ]
+            },
+            "min": 0,
+            "max": 100
+          }
+        }
+      }
+    ],
+    "annotations": {
+      "list": [
+        {
+          "datasource": "prometheus",
+          "enable": true,
+          "expr": "slash_command_total{status='failed'}",
+          "iconColor": "red",
+          "name": "Command Failures",
+          "tagKeys": "command,user"
+        }
+      ]
+    },
+    "links": [
+      {
+        "title": "CI Pipeline Dashboard",
+        "url": "/d/nextrust-ci/nextrust-ci-pipeline",
+        "type": "dashboards"
+      }
+    ]
+  }
+}

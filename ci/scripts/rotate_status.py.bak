@@ -1,0 +1,168 @@
+#!/usr/bin/env python3
+"""
+ci/scripts/rotate_status.py - Rotate status artifacts to prevent unbounded growth
+
+Purpose: Archive old status logs and maintain only recent entries
+Usage: python rotate_status.py [--dry-run]
+"""
+
+import json
+import shutil
+import argparse
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+
+# Configuration
+MAX_AGE_DAYS = 30
+MAX_SIZE_MB = 5
+ARCHIVE_DIR = Path("docs/ci-status/archive")
+
+def parse_timestamp(timestamp_str):
+    """Parse ISO timestamp with Z suffix."""
+    return datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
+
+def should_rotate(log_path: Path) -> tuple[bool, str]:
+    """Check if log needs rotation and return reason."""
+    if not log_path.exists():
+        return False, "File does not exist"
+    
+    # Check size
+    size_mb = log_path.stat().st_size / (1024 * 1024)
+    if size_mb > MAX_SIZE_MB:
+        return True, f"Size {size_mb:.2f}MB exceeds {MAX_SIZE_MB}MB limit"
+    
+    # Check age of oldest entry
+    try:
+        with open(log_path) as f:
+            data = json.load(f)
+    except json.JSONDecodeError:
+        return False, "Invalid JSON file"
+    
+    if not data.get("activities"):
+        return False, "No activities found"
+    
+    # Find oldest timestamp
+    oldest_timestamp = None
+    for activity in data["activities"]:
+        if "timestamp" in activity:
+            ts = parse_timestamp(activity["timestamp"])
+            if oldest_timestamp is None or ts < oldest_timestamp:
+                oldest_timestamp = ts
+    
+    if oldest_timestamp:
+        age = datetime.now(timezone.utc) - oldest_timestamp
+        if age.days > MAX_AGE_DAYS:
+            return True, f"Oldest entry is {age.days} days old (limit: {MAX_AGE_DAYS})"
+    
+    return False, "No rotation needed"
+
+def rotate_logs(dry_run=False):
+    """Perform log rotation."""
+    json_log = Path("docs/ci-status/pipeline-log.json")
+    md_log = Path("docs/ci-status/pipeline-log.md")
+    command_log = Path("docs/ci-status/command-log.json")
+    
+    should_rotate_result, reason = should_rotate(json_log)
+    
+    print(f"Checking {json_log}: {reason}")
+    
+    if not should_rotate_result:
+        print("No rotation needed")
+        return
+    
+    if dry_run:
+        print("[DRY RUN] Would rotate logs")
+        return
+    
+    # Create archive directory
+    ARCHIVE_DIR.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    
+    # Archive current logs
+    archived_files = []
+    if json_log.exists():
+        archive_path = ARCHIVE_DIR / f"pipeline-log-{timestamp}.json"
+        shutil.copy2(json_log, archive_path)
+        archived_files.append(archive_path)
+        print(f"Archived JSON to: {archive_path}")
+    
+    if md_log.exists():
+        archive_path = ARCHIVE_DIR / f"pipeline-log-{timestamp}.md"
+        shutil.copy2(md_log, archive_path)
+        archived_files.append(archive_path)
+        print(f"Archived Markdown to: {archive_path}")
+    
+    if command_log.exists():
+        archive_path = ARCHIVE_DIR / f"command-log-{timestamp}.json"
+        shutil.copy2(command_log, archive_path)
+        archived_files.append(archive_path)
+        print(f"Archived Command log to: {archive_path}")
+    
+    # Create new logs with current phase and recent activities only
+    with open(json_log) as f:
+        data = json.load(f)
+    
+    cutoff = datetime.now(timezone.utc) - timedelta(days=MAX_AGE_DAYS)
+    recent_activities = []
+    
+    for activity in data.get("activities", []):
+        if "timestamp" in activity:
+            ts = parse_timestamp(activity["timestamp"])
+            if ts > cutoff:
+                recent_activities.append(activity)
+    
+    # Preserve current phase information
+    new_data = {
+        "current_phase": data.get("current_phase", {
+            "id": "unknown",
+            "name": "Unknown",
+            "status": "unknown"
+        }),
+        "activities": recent_activities,
+        "metadata": {
+            "rotated": datetime.now(timezone.utc).isoformat() + "Z",
+            "previous_archive": str(archived_files[0]) if archived_files else None,
+            "total_activities_before": len(data.get("activities", [])),
+            "total_activities_after": len(recent_activities)
+        }
+    }
+    
+    # Write new JSON log
+    with open(json_log, "w") as f:
+        json.dump(new_data, f, indent=2)
+    
+    # Create new Markdown log
+    with open(md_log, "w") as f:
+        f.write(f"# NeXTRust CI Pipeline Status\n")
+        f.write(f"*Last updated: {datetime.now().strftime('%Y-%m-%d %I:%M %p')}*\n")
+        f.write(f"*Rotated: Kept {len(recent_activities)} activities from last {MAX_AGE_DAYS} days*\n\n")
+        
+        if "current_phase" in new_data:
+            phase = new_data["current_phase"]
+            f.write(f"## Current Phase: {phase.get('name', 'Unknown')}\n")
+            f.write(f"- ID: {phase.get('id', 'unknown')}\n")
+            f.write(f"- Status: {phase.get('status', 'unknown')}\n\n")
+        
+        f.write("## Recent Activities\n")
+        for activity in recent_activities[-10:]:  # Show last 10
+            f.write(f"- {activity['timestamp']} - {activity['type']}: ")
+            if isinstance(activity.get('details'), dict):
+                f.write(activity['details'].get('message', str(activity['details'])))
+            else:
+                f.write(str(activity.get('details', '')))
+            f.write("\n")
+    
+    print(f"Rotation complete:")
+    print(f"  - Archived {len(data.get('activities', []))} total activities")
+    print(f"  - Kept {len(recent_activities)} recent activities")
+    print(f"  - Freed {size_mb - (json_log.stat().st_size / (1024 * 1024)):.2f}MB")
+
+def main():
+    parser = argparse.ArgumentParser(description="Rotate CI pipeline status logs")
+    parser.add_argument("--dry-run", action="store_true", help="Show what would be done without making changes")
+    args = parser.parse_args()
+    
+    rotate_logs(dry_run=args.dry_run)
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# nextrust - Wrapper for nextrust_cli.py
+#
+# Purpose: Provide easy access to nextrust CLI tool
+# Usage: nextrust <command> [options]
+#
+set -euo pipefail
+
+# Find the script directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CLI_SCRIPT="$SCRIPT_DIR/tools/nextrust_cli.py"
+
+# Check if Python is available
+if ! command -v python3 &> /dev/null; then
+    echo "Error: Python 3 is required but not found" >&2
+    exit 1
+fi
+
+# Check if typer is installed
+if ! python3 -c "import typer" 2>/dev/null; then
+    echo "Warning: typer not installed. Please install manually: pip3 install typer" >&2
+    echo "Skipping nextrust CLI execution." >&2
+    exit 0
+fi
+
+# Execute the CLI
+exec python3 "$CLI_SCRIPT" "$@"

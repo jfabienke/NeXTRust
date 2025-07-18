@@ -1,0 +1,6 @@
+{"timestamp": "2025-07-18T05:27:58Z", "command": "test-command", "original_size": 17999, "summarized_size": 289, "bytes_saved": 17710, "savings_pct": 98}
+{"timestamp": "2025-07-18T05:28:12Z", "command": "test-command", "original_size": 17999, "summarized_size": 289, "bytes_saved": 17710, "savings_pct": 98}
+{"timestamp": "2025-07-18T14:39:18Z", "command": "", "original_size": 10999, "summarized_size": 219, "bytes_saved": 10780, "savings_pct": 98}
+{"timestamp": "2025-07-18T14:55:51Z", "command": "", "original_size": 10999, "summarized_size": 219, "bytes_saved": 10780, "savings_pct": 98}
+{"timestamp": "2025-07-18T14:55:58Z", "command": "", "original_size": 10999, "summarized_size": 219, "bytes_saved": 10780, "savings_pct": 98}
+{"timestamp": "2025-07-18T15:00:59Z", "command": "", "original_size": 10999, "summarized_size": 219, "bytes_saved": 10780, "savings_pct": 98}
