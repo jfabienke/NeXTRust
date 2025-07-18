@@ -77,7 +77,7 @@ new file mode 100644
 index 000000000..1bac574cc
 --- /dev/null
 +++ b/llvm/lib/Target/M68k/MCTargetDesc/M68kMachObjectWriter.cpp
-@@ -0,0 +1,117 @@
+@@ -0,0 +1,114 @@
 +//===-- M68kMachObjectWriter.cpp - M68k Mach-O Object Writer -------------===//
 +//
 +// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
@@ -95,11 +95,15 @@ index 000000000..1bac574cc
 +#include "MCTargetDesc/M68kMCTargetDesc.h"
 +#include "llvm/BinaryFormat/MachO.h"
 +#include "llvm/MC/MCAssembler.h"
++#include "llvm/MC/MCAsmLayout.h"
 +#include "llvm/MC/MCContext.h"
 +#include "llvm/MC/MCExpr.h"
 +#include "llvm/MC/MCFixup.h"
++#include "llvm/MC/MCFragment.h"
 +#include "llvm/MC/MCMachObjectWriter.h"
 +#include "llvm/MC/MCSection.h"
++#include "llvm/MC/MCSectionMachO.h"
++#include "llvm/MC/MCSymbol.h"
 +#include "llvm/MC/MCValue.h"
 +#include "llvm/Support/ErrorHandling.h"
 +
@@ -126,7 +130,7 @@ index 000000000..1bac574cc
 +                                             MCValue Target,
 +                                             uint64_t &FixedValue) {
 +  const MCSymbol *A = &Target.getSymA()->getSymbol();
-+  MCSection &Section = Fragment->getParent()->getSection();
++  const MCSection *Section = Fragment->getParent();
 +  
 +  bool IsPCRel = Writer->isFixupKindPCRel(Asm, Fixup.getKind());
 +  uint32_t FixupOffset = Layout.getFragmentOffset(Fragment) + Fixup.getOffset();
@@ -139,9 +143,9 @@ index 000000000..1bac574cc
 +  // Handle scattered relocations for 32-bit symbol differences (common in switch tables)
 +  if (Target.getSymB()) {
 +    const MCSymbol *B = &Target.getSymB()->getSymbol();
-+    MCSection &SecB = B->getSection();
++    const MCSection *SecB = &B->getSection();
 +    
-+    if (&SecB != &Section) {
++    if (SecB != Section) {
 +      // Cross-section references require scattered relocations
 +      UseScattered = true;
 +    }
@@ -156,7 +160,7 @@ index 000000000..1bac574cc
 +                  (MachO::GENERIC_RELOC_VANILLA << 24) |
 +                  (1 << 31); // R_SCATTERED flag
 +    
-+    Writer->addRelocation(A, &Section, MRE);
++    Writer->addRelocation(A, Section, MRE);
 +  } else {
 +    // Standard relocation
 +    unsigned Type = MachO::GENERIC_RELOC_VANILLA;
@@ -170,9 +174,9 @@ index 000000000..1bac574cc
 +    case FK_Data_4:
 +      Type = MachO::GENERIC_RELOC_VANILLA;
 +      break;
-+    case M68k::fixup_M68k_PC32:
-+    case M68k::fixup_M68k_PC16:
-+    case M68k::fixup_M68k_PC8:
++    case FK_PCRel_1:
++    case FK_PCRel_2:
++    case FK_PCRel_4:
 +      Type = MachO::GENERIC_RELOC_VANILLA;
 +      IsPCRel = true;
 +      break;
@@ -186,7 +190,7 @@ index 000000000..1bac574cc
 +                  (false << 4) | // External
 +                  (Type << 0);
 +
-+    Writer->addRelocation(A, &Section, MRE);
++    Writer->addRelocation(A, Section, MRE);
 +  }
 +}
 +
@@ -195,4 +199,3 @@ index 000000000..1bac574cc
 +                                 uint32_t CPUSubtype) {
 +  return std::make_unique<M68kMachObjectWriter>(Is32Bit, CPUType, CPUSubtype);
 +}
-\ No newline at end of file
