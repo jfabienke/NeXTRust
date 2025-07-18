@@ -105,6 +105,13 @@ jobs:
         run: |
           pip install typer
       
+      - name: Setup ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: ${{ matrix.os }}-${{ matrix.cpu_variant }}-${{ matrix.rust_profile }}
+          variant: ccache
+          max-size: 2G
+      
       - name: Log Build Start
         run: |
           echo "::group::Matrix Configuration"
@@ -123,8 +130,10 @@ jobs:
             ~/.cargo
             build/llvm-cache
             build/rust-cache
-          key: ${{ runner.os }}-nextrust-${{ hashFiles('**/Cargo.lock', 'patches/llvm/*') }}
+            toolchain
+          key: ${{ runner.os }}-nextrust-${{ hashFiles('**/Cargo.lock', 'patches/llvm/*') }}-${{ matrix.cpu_variant }}
           restore-keys: |
+            ${{ runner.os }}-nextrust-${{ hashFiles('**/Cargo.lock', 'patches/llvm/*') }}-
             ${{ runner.os }}-nextrust-
       
       - name: Build LLVM

@@ -1,0 +1,106 @@
+name: Quick CI
+# Quick CI workflow with reduced matrix for rapid iteration
+
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [opened, synchronize]
+    paths:
+      - 'src/**'
+      - 'patches/**'
+      - 'ci/scripts/**'
+      - '.github/workflows/quick-ci.yml'
+
+env:
+  CI_CONFIG_VERSION: 2.1
+
+jobs:
+  quick-build:
+    name: Quick Build (Ubuntu/Debug/m68030)
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      
+      - name: Setup ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: quick-ci-ubuntu
+          variant: ccache
+          max-size: 2G
+      
+      - name: Cache LLVM Build
+        uses: actions/cache@v4
+        with:
+          path: |
+            toolchain
+            build/llvm
+          key: quick-ci-llvm-${{ hashFiles('patches/llvm/*') }}
+          restore-keys: |
+            quick-ci-llvm-
+      
+      - name: Cache Cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: quick-ci-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            quick-ci-cargo-
+      
+      - name: Check LLVM Cache
+        id: check-llvm
+        run: |
+          if [[ -f "toolchain/bin/clang" ]]; then
+            echo "llvm_cached=true" >> $GITHUB_OUTPUT
+            echo "✅ Using cached LLVM build"
+          else
+            echo "llvm_cached=false" >> $GITHUB_OUTPUT
+            echo "🔨 Need to build LLVM"
+          fi
+      
+      - name: Build LLVM (if needed)
+        if: steps.check-llvm.outputs.llvm_cached != 'true'
+        run: |
+          ci/scripts/build-custom-llvm.sh --cpu-variant m68030
+      
+      - name: Build Rust Target
+        run: |
+          ci/scripts/build-rust-target.sh \
+            --target m68k-next-nextstep \
+            --profile debug \
+            --features m68030
+      
+      - name: Run Basic Tests
+        run: |
+          # Quick smoke tests
+          toolchain/bin/clang --version
+          toolchain/bin/clang -target m68k-next-nextstep --print-target-triple
+          
+          # Check if Rust binary was created
+          if [[ -f "target/m68k-next-nextstep/debug/examples/hello-no-std" ]]; then
+            echo "✅ Rust build successful"
+            file target/m68k-next-nextstep/debug/examples/hello-no-std
+          else
+            echo "❌ Rust build failed"
+            exit 1
+          fi
+      
+      - name: Summary
+        if: always()
+        run: |
+          echo "### Quick CI Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [[ "${{ steps.check-llvm.outputs.llvm_cached }}" == "true" ]]; then
+            echo "✅ Used cached LLVM build" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "🔨 Built LLVM from source" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Configuration: Ubuntu / Debug / m68030" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "For full matrix builds, use the main CI workflow." >> $GITHUB_STEP_SUMMARY

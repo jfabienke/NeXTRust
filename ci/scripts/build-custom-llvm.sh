@@ -63,12 +63,21 @@ cd "$BUILD_DIR" || emit_error "FileSystemError" "E004" "Cannot create build dire
 
 # Configure build
 echo "Configuring LLVM build..."
+# Enable ccache if available
+if command -v ccache &> /dev/null; then
+    echo "Using ccache for faster builds"
+    export CMAKE_C_COMPILER_LAUNCHER=ccache
+    export CMAKE_CXX_COMPILER_LAUNCHER=ccache
+    ccache -s # Show ccache stats
+fi
+
 if ! cmake -G Ninja \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR" \
     -DLLVM_TARGETS_TO_BUILD="X86;M68k" \
     -DLLVM_ENABLE_PROJECTS="clang;lld" \
     -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD="M68k" \
+    -DLLVM_CCACHE_BUILD=ON \
     "../../$LLVM_DIR/llvm"; then
     
     emit_error "ConfigurationError" "E005" "CMake configuration failed" "Check CMakeLists.txt and patches"
@@ -76,7 +85,7 @@ fi
 
 # Build
 echo "Building LLVM (this may take a while)..."
-if ! cmake --build . --target install; then
+if ! cmake --build . --target install -j$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4); then
     # Try to extract specific error
     if grep -q "undefined reference" build.log 2>/dev/null; then
         emit_error "LinkError" "E006" "Linker error during build" "Check symbol definitions in patches"
@@ -106,6 +115,12 @@ fi
 # Success
 echo "✅ Custom LLVM built successfully!"
 echo "Installation directory: $INSTALL_DIR"
+
+# Show ccache stats if available
+if command -v ccache &> /dev/null; then
+    echo "ccache statistics:"
+    ccache -s
+fi
 
 # Log success with nextrust CLI
 if command -v ./ci/scripts/nextrust &> /dev/null; then
