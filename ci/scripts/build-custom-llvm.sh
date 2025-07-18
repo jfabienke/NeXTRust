@@ -7,8 +7,8 @@
 set -uo pipefail
 
 # Trigger pre-hook if in CI
-if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
-    ./ci/scripts/trigger-hook.sh pre Bash "$0 $*" || true
+if [[ -n "${GITHUB_ACTIONS:-}" ]] && [[ -x "ci/scripts/trigger-hook.sh" ]]; then
+    ci/scripts/trigger-hook.sh pre Bash "$0 $*" || true
 fi
 
 # Error handling function
@@ -32,8 +32,8 @@ emit_error() {
 EOF
     
     # Trigger post-hook on failure if in CI
-    if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
-        ./ci/scripts/trigger-hook.sh post Bash "build-custom-llvm.sh" 1 || true
+    if [[ -n "${GITHUB_ACTIONS:-}" ]] && [[ -x "ci/scripts/trigger-hook.sh" ]]; then
+        ci/scripts/trigger-hook.sh post Bash "build-custom-llvm.sh" 1 || true
     fi
     
     exit 1
@@ -134,8 +134,8 @@ if command -v ccache &> /dev/null; then
 fi
 
 # Trigger post-hook if in CI
-if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
-    ./ci/scripts/trigger-hook.sh post Bash "$0 $*" 0 || true
+if [[ -n "${GITHUB_ACTIONS:-}" ]] && [[ -x "ci/scripts/trigger-hook.sh" ]]; then
+    ci/scripts/trigger-hook.sh post Bash "$0 $*" 0 || true
 fi
 
 # Log success with nextrust CLI
