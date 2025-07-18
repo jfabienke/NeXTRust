@@ -112,6 +112,19 @@ jobs:
           variant: ccache
           max-size: 2G
       
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install Claude Code CLI
+        run: |
+          npm install -g @anthropics/claude-code
+          claude --version
+          
+          # Configure Claude Code API key
+          echo "ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}" >> $GITHUB_ENV
+      
       - name: Log Build Start
         run: |
           echo "::group::Matrix Configuration"
@@ -136,19 +149,27 @@ jobs:
             ${{ runner.os }}-nextrust-${{ hashFiles('**/Cargo.lock', 'patches/llvm/*') }}-
             ${{ runner.os }}-nextrust-
       
-      - name: Build LLVM
+      - name: Run Agent Feedback Loop
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          O3_ENDPOINT: ${{ secrets.O3_ENDPOINT }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          CPU_VARIANT: ${{ matrix.cpu_variant }}
+          OS_NAME: ${{ matrix.os }}
+          RUST_PROFILE: ${{ matrix.rust_profile }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_RUN_ATTEMPT: ${{ github.run_attempt }}
+          RUNNER_NAME: ${{ runner.name }}
         run: |
-          # Thin runner - Claude Code handles intelligence
-          ci/scripts/build-custom-llvm.sh \
-            --cpu-variant ${{ matrix.cpu_variant }}
-      
-      - name: Build Rust Target
-        run: |
-          # Use stub build script until target is implemented
-          ci/scripts/build-rust-target.sh \
-            --target m68k-next-nextstep \
-            --profile ${{ matrix.rust_profile }} \
-            --features ${{ matrix.cpu_variant }}
+          # Export matrix variables for hooks
+          echo "CPU_VARIANT=${{ matrix.cpu_variant }}" >> $GITHUB_ENV
+          echo "OS_NAME=${{ matrix.os }}" >> $GITHUB_ENV
+          echo "RUST_PROFILE=${{ matrix.rust_profile }}" >> $GITHUB_ENV
+          
+          # Run Claude Code with agent feedback loop
+          ci/scripts/agent-feedback-loop.sh
       
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
