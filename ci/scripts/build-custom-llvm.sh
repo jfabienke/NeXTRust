@@ -6,6 +6,11 @@
 #
 set -uo pipefail
 
+# Trigger pre-hook if in CI
+if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+    ./ci/scripts/trigger-hook.sh pre Bash "$0 $*" || true
+fi
+
 # Error handling function
 emit_error() {
     local error_type="$1"
@@ -25,6 +30,12 @@ emit_error() {
   "phase": "${PHASE_ID:-phase-2}"
 }
 EOF
+    
+    # Trigger post-hook on failure if in CI
+    if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+        ./ci/scripts/trigger-hook.sh post Bash "build-custom-llvm.sh" 1 || true
+    fi
+    
     exit 1
 }
 
@@ -120,6 +131,11 @@ echo "Installation directory: $INSTALL_DIR"
 if command -v ccache &> /dev/null; then
     echo "ccache statistics:"
     ccache -s
+fi
+
+# Trigger post-hook if in CI
+if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+    ./ci/scripts/trigger-hook.sh post Bash "$0 $*" 0 || true
 fi
 
 # Log success with nextrust CLI
