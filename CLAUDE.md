@@ -84,9 +84,105 @@ python agents/tools/mcp-query.py
 ./ci/scripts/slash/ci-help.sh
 ```
 
-## Architecture Overview
+## CI/CD Pipeline Architecture (v2.2)
 
-### Project Structure
+### **CRITICAL: Understanding the Hook System**
+NeXTRust uses Claude Code's native hook system with a sophisticated v2.2 dispatcher architecture. **Every bash command you run will trigger hooks automatically** - this is how the CI pipeline works.
+
+#### **Hook Flow Overview**
+```
+You run: ./ci/scripts/build-custom-llvm.sh
+    ↓
+1. PreToolUse Hook → hooks/dispatcher.sh pre
+   - Validates phase alignment
+   - Checks environment
+   - Logs command start
+    ↓
+2. Command Executes → build-custom-llvm.sh runs
+    ↓
+3. PostToolUse Hook → hooks/dispatcher.sh post
+   - Analyzes failures if exit_code != 0
+   - Updates pipeline status
+   - Triggers AI escalation if needed
+    ↓
+4. Stop Hook → hooks/dispatcher.sh stop (session end)
+   - Captures token usage via ccusage
+   - Triggers code reviews
+   - Updates metrics
+```
+
+#### **Key Hook Configuration** (`.claude/settings.json`)
+```json
+{
+  "hooks": {
+    "PreToolUse": [{
+      "matcher": "Bash",
+      "command": "./hooks/dispatcher.sh pre",
+      "timeout": 90
+    }],
+    "PostToolUse": [{
+      "matcher": "Bash", 
+      "command": "./hooks/dispatcher.sh post",
+      "timeout": 300
+    }],
+    "Stop": [{
+      "command": "./hooks/dispatcher.sh stop",
+      "timeout": 60
+    }],
+    "UserPromptSubmit": [{
+      "command": "./hooks/dispatcher.sh user-prompt-submit",
+      "timeout": 30
+    }]
+  }
+}
+```
+
+### **Modular Dispatcher Architecture**
+The v2.2 dispatcher (`hooks/dispatcher.sh`) routes to specialized modules:
+
+```
+hooks/
+├── dispatcher.sh              # ← Main entry point (v2.2 unified)
+└── dispatcher.d/
+    ├── common/
+    │   ├── setup.sh              # Environment initialization
+    │   ├── cleanup.sh            # Post-execution cleanup
+    │   ├── failure-analysis.sh   # Pattern recognition
+    │   ├── failure-tracking.sh   # Persistent failure management
+    │   ├── idempotency.sh        # Duplicate operation prevention
+    │   └── metrics.sh            # Token usage tracking
+    ├── pre-tool-use/
+    │   ├── validate-cwd.sh       # Working directory validation
+    │   ├── validate-file-creation.sh # File operation safety
+    │   ├── validate-git-commit.sh # Git operation validation
+    │   ├── validate-llvm.sh      # LLVM build environment
+    │   └── check-phase-alignment.sh # Phase progression validation
+    ├── post-tool-use/
+    │   ├── analyze-failure.sh    # Intelligent failure analysis
+    │   ├── capture-error-snapshot.sh # Error state preservation
+    │   ├── update-status.sh      # Status artifact management
+    │   └── generate-success-artifacts.sh # Success handling
+    ├── stop/
+    │   ├── capture-usage.sh      # Token usage via ccusage
+    │   └── trigger-review.sh     # AI service orchestration
+    ├── user-prompt-submit/
+    │   ├── audit-prompt.sh       # Prompt tracking
+    │   ├── phase-banner.sh       # Current phase display
+    │   └── security-guard.sh     # Command safety validation
+    └── tool-output/
+        └── summarize-build-logs.sh # Log analysis
+```
+
+### **Pipeline Status Tracking**
+The pipeline maintains dual-format status artifacts:
+
+- **Machine-readable**: `docs/ci-status/pipeline-log.json`
+- **Human-readable**: `docs/ci-status/pipeline-log.md` 
+- **Failure tracking**: `.claude/failure-tracking/failures.json`
+- **Session files**: `.claude/sessions/` (idempotency)
+- **Hook logs**: `.claude/hook-logs/` (debugging)
+
+### **Project Structure**
 - **src/crates/nextstep-sys**: System bindings for NeXTSTEP APIs
 - **src/examples**: Example Rust programs targeting NeXTSTEP
 - **patches/**: LLVM and Rust patches for NeXTSTEP support
@@ -95,6 +191,8 @@ python agents/tools/mcp-query.py
 - **targets/**: Custom Rust target specification (m68k-next-nextstep.json)
 - **tests/**: Emulation-based test infrastructure
 - **agents/**: AI-driven development workflow automation
+- **hooks/**: v2.2 CI/CD hook system (dispatcher + modules)
+- **ci/scripts/**: Build scripts that work with the hook system
 
 ### Key Technical Components
 
@@ -199,4 +297,4 @@ When implementing features:
 - **Library Porting Guide**: docs/library-porting.md
 
 <!-- PEER REVIEW: Added freshness lint comment to enable automated staleness checks in CI. -->
-Last updated: 2025-07-20 8:30 AM <!-- AUTO-UPDATE-HORIZON:90d --> <!-- v2.1 consolidated -->
+Last updated: 2025-07-20 8:30 AM <!-- AUTO-UPDATE-HORIZON:90d --> <!-- v2.2 consolidated -->

@@ -324,6 +324,21 @@
   "current_phase": {
     "id": "test-phase",
     "name": "Test Phase",
-    "status": "in_progress"
-  }
+    "status": "in_progress",
+    "started_at": "2025-07-20T18:26:42.123949Z"
+  },
+  "entries": [
+    {
+      "timestamp": "2025-07-20T18:25:45.304625Z",
+      "type": "info",
+      "message": "test",
+      "phase": "test-phase"
+    },
+    {
+      "timestamp": "2025-07-20T18:26:41.969889Z",
+      "type": "info",
+      "message": "test",
+      "phase": "test-phase"
+    }
+  ]
 }

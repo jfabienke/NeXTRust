@@ -1,0 +1,39 @@
+{
+  "daily_usage": {
+    "gemini": {
+      "2025-07-20": {
+        "requests": 5,
+        "cost_usd": 0.12200000000000001
+      }
+    }
+  },
+  "monthly_usage": {
+    "gemini": {
+      "2025-07": {
+        "requests": 5,
+        "cost_usd": 0.12200000000000001
+      }
+    }
+  },
+  "last_reset": {
+    "daily": null,
+    "monthly": null
+  },
+  "violations": [
+    {
+      "timestamp": "2025-07-20T20:57:01.543901",
+      "threshold": 0.005,
+      "actual_cost": 0.016,
+      "days": 1,
+      "usage_breakdown": {
+        "gemini": {
+          "calls": 3.0,
+          "cost_usd": 0.016,
+          "tokens_in": 3500.0,
+          "tokens_out": 1750.0
+        }
+      }
+    }
+  ],
+  "last_request_gemini": "2025-07-20T20:56:41.390314"
+}

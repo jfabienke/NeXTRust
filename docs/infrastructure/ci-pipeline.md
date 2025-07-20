@@ -2,7 +2,7 @@
 
 *Last updated: 2025-07-20 07:49*
 
-> **Version:** 2.1 - Unified modular dispatcher architecture with consolidated components
+> **Version:** 2.2 - AI-activated pipeline with automated reviews and budget controls
 
 ## Overview
 
@@ -16,7 +16,7 @@ The NeXTRust CI pipeline leverages Claude Code's native hook capabilities as the
 4. **Hook-Based Orchestration**: No client-side git hooks needed
 5. **Idempotent Operations**: Safe for retries and context resets
 
-## Version 2.1 Enhancements
+## Version 2.2 Enhancements
 
 ### Unified Modular Dispatcher Architecture
 - **Single Dispatcher**: Main dispatcher (`hooks/dispatcher.sh`) consolidated from separate v2 variants

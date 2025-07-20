@@ -1,5 +1,5 @@
 {
-  "last_updated": "2025-07-18 5:55 PM",
+  "last_updated": "2025-07-20 21:05 EEST",
   "currency": "USD",
   "prices_per_million_tokens": {
     "claude-3-5-sonnet": {
@@ -26,7 +26,14 @@
       "input": 2.00,
       "output": 8.00,
       "cached_input": 1.50,
-      "description": "OpenAI O3 - Advanced reasoning model for complex design decisions"
+      "description": "OpenAI O3 - Advanced reasoning model for complex design decisions",
+      "usage_limits": {
+        "max_requests_per_day": 10,
+        "max_requests_per_hour": 3,
+        "max_cost_per_day": 20.00,
+        "max_cost_per_month": 300.00,
+        "cooldown_minutes": 30
+      }
     },
     "gemini-2.5-pro": {
       "input": 1.25,
@@ -39,7 +46,13 @@
         "requests_per_day": 1000,
         "requests_per_minute": 60
       },
-      "description": "Gemini 2.5 Pro - FREE via CLI (1000/day, 60/min) or paid via API"
+      "description": "Gemini 2.5 Pro - FREE via CLI (1000/day, 60/min) or paid via API",
+      "usage_limits": {
+        "max_requests_per_day": 100,
+        "max_requests_per_hour": 20,
+        "prefer_cli": true,
+        "fallback_to_api": false
+      }
     }
   },
   "thresholds": {

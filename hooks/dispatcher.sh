@@ -1,5 +1,5 @@
 #!/bin/bash
-# hooks/dispatcher.sh - NeXTRust CI/CD Pipeline Dispatcher v2.1
+# hooks/dispatcher.sh - NeXTRust CI/CD Pipeline Dispatcher v2.2
 #
 # Purpose: Thin router that delegates to specialized modular handlers
 # Inputs: Hook type ($1) and JSON payload (stdin)
@@ -12,10 +12,15 @@ set -uo pipefail
 # Note: CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR=1 ensures we're always in project root
 # No need for manual cd commands
 
+# Safety check: Ensure we're in the project root
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+cd "$PROJECT_ROOT" || { echo "[ERROR] Failed to cd to project root: $PROJECT_ROOT"; exit 1; }
+
 HOOK_TYPE=${1:-}
 
 # Always log that dispatcher was called
-echo "[$(date)] NeXTRust CI/CD Pipeline Dispatcher v2.1 called with type: ${HOOK_TYPE:-none}"
+echo "[$(date)] NeXTRust CI/CD Pipeline Dispatcher v2.2 called with type: ${HOOK_TYPE:-none}"
 
 # Check for slash command mode FIRST
 if [[ -n "${CI_COMMAND:-}" ]]; then

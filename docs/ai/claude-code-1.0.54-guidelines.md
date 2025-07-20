@@ -90,4 +90,4 @@ status-append.py "shell_snapshot" "${RUN_ID}.gz"
 | Insert argument-hint blocks | @dx-team | ☐ |
 | Wire shell-snapshot into analyze-build.sh | @reliability | ☐ |
 
-Once all tasks tick ✅, bump `CI_CONFIG_VERSION` to `2.1` so downstream scripts know features are available.
+Once all tasks tick ✅, bump `CI_CONFIG_VERSION` to `2.2` so downstream scripts know features are available.

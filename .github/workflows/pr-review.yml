@@ -1,0 +1,121 @@
+name: "AI Code Review"
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  pull-requests: write # Required to post comments
+  contents: read
+  actions: read
+
+jobs:
+  gemini-review:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Needed to diff against main
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Setup Python Environment
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install Dependencies  
+        run: |
+          pip install typer jq
+          # Install Gemini CLI if available
+          if command -v npm &> /dev/null; then
+            npm install -g @google-ai/generativelanguage
+          fi
+
+      - name: Setup Tools
+        run: |
+          chmod +x ci/scripts/*.sh
+          chmod +x hooks/dispatcher.sh hooks/dispatcher.d/*/*.sh
+
+      - name: Validate Environment
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Verify required secrets are available
+          if [[ -z "${GEMINI_API_KEY:-}" ]]; then
+            echo "::error::GEMINI_API_KEY secret not configured"
+            exit 1
+          fi
+          
+          # Verify PR number is available
+          if [[ -z "${{ github.event.pull_request.number }}" ]]; then
+            echo "::error::PR number not available"
+            exit 1
+          fi
+          
+          echo "✅ Environment validated for PR #${{ github.event.pull_request.number }}"
+
+      - name: Request Gemini Review
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          echo "🤖 Requesting Gemini review for PR #${PR_NUMBER}..."
+          
+          # Track start time for metrics
+          START_TIME=$(date +%s)
+          
+          # Call the unified AI service handler
+          if ./ci/scripts/request-ai-service.sh \
+              --service gemini \
+              --type review \
+              --pr "${PR_NUMBER}"; then
+            
+            # Calculate duration for metrics
+            END_TIME=$(date +%s)
+            DURATION=$((END_TIME - START_TIME))
+            
+            echo "::notice title=Gemini Review::Completed in ${DURATION}s for PR #${PR_NUMBER}"
+            
+            # Emit metrics if metrics.sh is available
+            if [[ -f "hooks/dispatcher.d/common/metrics.sh" ]]; then
+              source hooks/dispatcher.d/common/metrics.sh
+              emit_timing "gemini_review" "$DURATION" "pr:${PR_NUMBER}"
+              emit_counter "gemini_reviews" 1 "status:success"
+            fi
+          else
+            echo "::error::Gemini review failed for PR #${PR_NUMBER}"
+            
+            # Emit failure metrics
+            if [[ -f "hooks/dispatcher.d/common/metrics.sh" ]]; then
+              source hooks/dispatcher.d/common/metrics.sh
+              emit_counter "gemini_reviews" 1 "status:failure"
+            fi
+            
+            # Still post a comment to inform the user
+            gh api \
+              --method POST \
+              -H "Accept: application/vnd.github+json" \
+              "/repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" \
+              -f body="⚠️ **Gemini Review Failed**
+
+The automated code review encountered an error. Please check the [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.
+
+You can manually trigger a review with the \`/ci-ai-review\` slash command."
+            
+            exit 1
+          fi
+
+      - name: Upload Metrics Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gemini-review-metrics-${{ github.run_id }}
+          path: |
+            docs/ci-status/metrics/
+            docs/ci-status/usage/
+          retention-days: 30

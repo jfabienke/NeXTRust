@@ -50,18 +50,10 @@ index b66557ec6..7154c5bca 100644
    return new M68kELFAsmBackend(T, OSABI);
  }
 diff --git a/llvm/lib/Target/M68k/MCTargetDesc/M68kMCTargetDesc.h b/llvm/lib/Target/M68k/MCTargetDesc/M68kMCTargetDesc.h
-index 2a1cc6780..793e9afee 100644
+index 2a1cc6780..a0c3dabaf 100644
 --- a/llvm/lib/Target/M68k/MCTargetDesc/M68kMCTargetDesc.h
 +++ b/llvm/lib/Target/M68k/MCTargetDesc/M68kMCTargetDesc.h
-@@ -17,6 +17,7 @@
- #include "llvm/MC/MCInstrDesc.h"
- #include "llvm/MC/MCObjectWriter.h"
- #include "llvm/Support/DataTypes.h"
-+#include <memory>
- 
- namespace llvm {
- class MCAsmBackend;
-@@ -43,6 +44,10 @@ MCCodeEmitter *createM68kMCCodeEmitter(const MCInstrInfo &MCII,
+@@ -43,6 +43,10 @@ MCCodeEmitter *createM68kMCCodeEmitter(const MCInstrInfo &MCII,
  /// Construct an M68k ELF object writer.
  std::unique_ptr<MCObjectTargetWriter> createM68kELFObjectWriter(uint8_t OSABI);
  
@@ -74,10 +66,10 @@ index 2a1cc6780..793e9afee 100644
  // Defines symbolic names for M68k registers. This defines a mapping from
 diff --git a/llvm/lib/Target/M68k/MCTargetDesc/M68kMachObjectWriter.cpp b/llvm/lib/Target/M68k/MCTargetDesc/M68kMachObjectWriter.cpp
 new file mode 100644
-index 000000000..1bac574cc
+index 000000000..babcac30a
 --- /dev/null
 +++ b/llvm/lib/Target/M68k/MCTargetDesc/M68kMachObjectWriter.cpp
-@@ -0,0 +1,117 @@
+@@ -0,0 +1,141 @@
 +//===-- M68kMachObjectWriter.cpp - M68k Mach-O Object Writer -------------===//
 +//
 +// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
@@ -110,6 +102,25 @@ index 000000000..1bac574cc
 +using namespace llvm;
 +
 +namespace {
++
++static unsigned getFixupKindLog2Size(MCFixupKind Kind) {
++  switch (Kind) {
++  default:
++    llvm_unreachable("Unknown fixup kind!");
++  case FK_Data_1:
++  case FK_PCRel_1:
++    return 0;
++  case FK_Data_2:
++  case FK_PCRel_2:
++    return 1;
++  case FK_Data_4:
++  case FK_PCRel_4:
++    return 2;
++  case FK_Data_8:
++  case FK_PCRel_8:
++    return 3;
++  }
++}
 +class M68kMachObjectWriter : public MCMachObjectTargetWriter {
 +public:
 +  M68kMachObjectWriter(bool Is32Bit, uint32_t CPUType, uint32_t CPUSubtype)
@@ -200,3 +211,4 @@ index 000000000..1bac574cc
 +                                 uint32_t CPUSubtype) {
 +  return std::make_unique<M68kMachObjectWriter>(Is32Bit, CPUType, CPUSubtype);
 +}
+\ No newline at end of file

@@ -141,7 +141,7 @@ run_test "Status append wrapper" \
 echo
 echo "═══ Version 2.x Features ═══"
 
-run_test "Dispatcher v2.1 unified" \
+run_test "Dispatcher v2.2 unified" \
     "test -f hooks/dispatcher.sh"
 
 run_test "Unified failure analysis" \

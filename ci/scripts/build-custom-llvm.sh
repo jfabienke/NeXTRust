@@ -65,9 +65,15 @@ fi
 echo "Applying NeXTSTEP patches..."
 for patch in "$PATCHES_DIR"/*.patch; do
     if [[ -f "$patch" ]]; then
-        echo "  - Applying $(basename "$patch")"
-        if ! patch -p1 -d "$LLVM_DIR" < "$patch"; then
-            emit_error "PatchError" "E003" "Failed to apply patch" "$(basename "$patch")"
+        echo "  - Checking $(basename "$patch")"
+        # Check if patch is already applied
+        if patch -p1 -d "$LLVM_DIR" --dry-run -R < "$patch" >/dev/null 2>&1; then
+            echo "    Patch already applied, skipping"
+        else
+            echo "    Applying patch"
+            if ! patch -p1 -d "$LLVM_DIR" < "$patch"; then
+                emit_error "PatchError" "E003" "Failed to apply patch" "$(basename "$patch")"
+            fi
         fi
     fi
 done
@@ -76,14 +82,24 @@ done
 mkdir -p "$BUILD_DIR"
 cd "$BUILD_DIR" || emit_error "FileSystemError" "E004" "Cannot create build directory" "$BUILD_DIR"
 
+# Clean build if requested
+if [[ "${CLEAN_BUILD:-}" == "1" ]]; then
+    echo "Performing clean build..."
+    rm -rf *
+fi
+
 # Configure build
 echo "Configuring LLVM build..."
 # Enable ccache if available
+CCACHE_OPTION="OFF"
 if command -v ccache &> /dev/null; then
     echo "Using ccache for faster builds"
     export CMAKE_C_COMPILER_LAUNCHER=ccache
     export CMAKE_CXX_COMPILER_LAUNCHER=ccache
+    CCACHE_OPTION="ON"
     ccache -s # Show ccache stats
+else
+    echo "ccache not found, building without cache"
 fi
 
 if ! cmake -G Ninja \
@@ -92,7 +108,7 @@ if ! cmake -G Ninja \
     -DLLVM_TARGETS_TO_BUILD="X86;M68k" \
     -DLLVM_ENABLE_PROJECTS="clang;lld" \
     -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD="M68k" \
-    -DLLVM_CCACHE_BUILD=ON \
+    -DLLVM_CCACHE_BUILD="$CCACHE_OPTION" \
     "../../$LLVM_DIR/llvm"; then
     
     emit_error "ConfigurationError" "E005" "CMake configuration failed" "Check CMakeLists.txt and patches"
@@ -100,12 +116,17 @@ fi
 
 # Build
 echo "Building LLVM (this may take a while)..."
-if ! cmake --build . --target install -j$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4); then
+BUILD_LOG="${BUILD_DIR}/build.log"
+if ! cmake --build . --target install -j$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4) 2>&1 | tee "$BUILD_LOG"; then
     # Try to extract specific error
-    if grep -q "undefined reference" build.log 2>/dev/null; then
+    if grep -q "undefined reference" "$BUILD_LOG" 2>/dev/null; then
         emit_error "LinkError" "E006" "Linker error during build" "Check symbol definitions in patches"
-    elif grep -q "No rule to make target" build.log 2>/dev/null; then
+    elif grep -q "No rule to make target" "$BUILD_LOG" 2>/dev/null; then
         emit_error "BuildError" "E007" "Missing build target" "Check CMake configuration"
+    elif grep -q "error: unknown type name" "$BUILD_LOG" 2>/dev/null; then
+        emit_error "CompileError" "E011" "Compilation error" "Check patch syntax and includes"
+    elif grep -q "CMake Error" "$BUILD_LOG" 2>/dev/null; then
+        emit_error "ConfigurationError" "E012" "CMake configuration error" "Check CMakeLists.txt files"
     else
         emit_error "BuildError" "E008" "Generic build failure" "See build.log for details"
     fi

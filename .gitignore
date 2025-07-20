@@ -57,6 +57,10 @@ env/
 # Secrets (never commit these)
 .env
 .env.local
+local-test-secrets.env
 *.key
 *.pem
 secrets/
+
+# Toolchain binaries
+toolchain/

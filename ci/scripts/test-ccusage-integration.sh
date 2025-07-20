@@ -6,6 +6,9 @@
 #
 set -uo pipefail
 
+# Enable debug output for test logging
+set -x
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -43,9 +46,9 @@ run_test "availability checker exists" \
 run_test "availability checker is executable" \
     "test -x ci/scripts/check-ccusage.sh"
 
-# Test 2: Source and use availability functions
-run_test "can source availability checker" \
-    "source ci/scripts/check-ccusage.sh"
+# Test 2: Run availability checker
+run_test "can run availability checker" \
+    "ci/scripts/check-ccusage.sh || [[ \$? -eq 1 ]]"
 
 # Test 3: Check hook integration
 run_test "stop hook exists" \

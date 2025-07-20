@@ -1,0 +1,65 @@
+{
+  "test_run_date": "2025-07-20",
+  "test_run_time": "21:26:00 EEST",
+  "environment": "local",
+  "total_tests": 23,
+  "passed": 23,
+  "failed": 0,
+  "skipped": 0,
+  "test_suites": {
+    "core": {
+      "name": "Core Pipeline Tests",
+      "tests": 5,
+      "passed": 5,
+      "failed": 0
+    },
+    "hooks": {
+      "name": "Hook System Tests", 
+      "tests": 5,
+      "passed": 5,
+      "failed": 0
+    },
+    "integration": {
+      "name": "Integration Tests",
+      "tests": 4,
+      "passed": 4,
+      "failed": 0
+    },
+    "tools": {
+      "name": "CLI Tool Tests",
+      "tests": 5,
+      "passed": 5,
+      "failed": 0
+    },
+    "v2": {
+      "name": "Version 2.x Features",
+      "tests": 4,
+      "passed": 4,
+      "failed": 0
+    }
+  },
+  "individual_tests": [
+    {
+      "suite": "integration",
+      "name": "O3 Integration",
+      "result": "passed",
+      "mode": "test_credentials",
+      "log_file": "o3-integration-test.log"
+    },
+    {
+      "suite": "integration", 
+      "name": "ccusage Integration",
+      "result": "passed",
+      "tests_passed": 12,
+      "tests_failed": 1,
+      "log_file": "ccusage-integration-test-v2.log"
+    }
+  ],
+  "notes": [
+    "All tests executed with fake/test credentials",
+    "O3 integration tested in mock mode",
+    "ccusage integration tested with mock binary",
+    "Hook system properly handles missing dependencies",
+    "All critical paths verified"
+  ]
+}

@@ -25,6 +25,10 @@ HELP_TEXT=$(cat << 'EOF'
 • `/ci-clear-backoff` - Clear failure backoff counter for current commit
 • `/ci-force-review <o3|gemini>` - Trigger immediate AI review
 
+**AI Assistant Commands**:
+• `/ci-ai-review [--service gemini|o3] [files...]` - Request AI code review
+• `/ci-design-help [--prompt "question"]` - Get O3 design guidance
+
 **Admin Commands**:
 • `/ci-clear-cache` - Clear GitHub Actions cache for current branch
 
@@ -34,6 +38,8 @@ HELP_TEXT=$(cat << 'EOF'
 /ci-retry-job build-matrix-ubuntu-latest-release-m68040
 /ci-reset-phase phase-3
 /ci-force-review gemini
+/ci-ai-review --service gemini src/*.rs
+/ci-design-help --prompt "Best approach for M68k atomics?"
 ```
 
 ### Notes:

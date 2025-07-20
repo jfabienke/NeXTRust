@@ -6,6 +6,12 @@
 #
 set -uo pipefail
 
+# Source local test secrets if available
+if [ -f "local-test-secrets.env" ]; then
+    echo "INFO: Sourcing local test secrets."
+    source "local-test-secrets.env"
+fi
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -86,7 +92,7 @@ test_suite_hooks() {
     echo "═══ Hook System Tests ═══"
     
     run_test "Dispatcher executable" \
-        "test -x hooks/dispatcher-v2.sh"
+        "test -x hooks/dispatcher.sh"
     
     run_test "Pre-tool-use hooks" \
         "ls hooks/dispatcher.d/pre-tool-use/*.sh >/dev/null 2>&1"
@@ -100,7 +106,7 @@ test_suite_hooks() {
     # Test specific hook functionality
     local TEST_PAYLOAD='{"tool_name":"Bash","tool_args":{"command":"echo test"}}'
     run_test "Hook routing" \
-        "echo '$TEST_PAYLOAD' | bash hooks/dispatcher-v2.sh pre 2>/dev/null"
+        "echo '$TEST_PAYLOAD' | bash hooks/dispatcher.sh pre 2>/dev/null"
 }
 
 # Integration tests
@@ -145,7 +151,7 @@ test_suite_tools() {
     fi
     
     run_test "Slash command scripts" \
-        "ls ci/scripts/slash/*.sh | wc -l | grep -qE '^[0-9]+$'"
+        "ls ci/scripts/slash/*.sh 2>/dev/null | wc -l | tr -d ' ' | grep -qE '^[0-9]+$'"
 }
 
 # Version 2.x feature tests
@@ -153,7 +159,7 @@ test_suite_v2() {
     echo "═══ Version 2.x Features ═══"
     
     run_test "Dispatcher v2" \
-        "test -f hooks/dispatcher-v2.sh"
+        "test -f hooks/dispatcher.sh"
     
     run_test "Unified failure analysis" \
         "grep -q 'analyze_failure' hooks/dispatcher.d/common/failure-analysis.sh"

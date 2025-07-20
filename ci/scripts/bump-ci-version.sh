@@ -7,8 +7,8 @@
 set -uo pipefail
 
 CONFIG_FILE=".github/workflows/nextrust-ci.yml"
-OLD_VERSION="2.0"
-NEW_VERSION="2.1"
+OLD_VERSION="2.1"
+NEW_VERSION="2.2"
 
 echo "=== Bumping CI Configuration Version ==="
 echo

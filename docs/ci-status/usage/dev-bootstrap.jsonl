@@ -1,0 +1,9 @@
+{"timestamp":"2025-07-20T00:00:00Z","service":"gemini","tokens":{"input":1500,"output":800},"cost_usd":0.0046,"context":"Design review for LLVM patch"}
+{"timestamp":"2025-07-20T02:30:00Z","service":"gemini","tokens":{"input":2000,"output":1200},"cost_usd":0.0068,"context":"Code review for hook system"}
+{"timestamp":"2025-07-20T05:15:00Z","service":"gemini","tokens":{"input":1000,"output":500},"cost_usd":0.0030,"context":"Architecture feedback"}
+{"timestamp":"2025-07-20T08:45:00Z","service":"o3","tokens":{"input":500,"output":1000},"cost_usd":0.0090,"context":"Complex design decision"}
+{"timestamp":"2025-07-20T11:00:00Z","service":"gemini","tokens":{"input":1800,"output":900},"cost_usd":0.0054,"context":"Pipeline optimization review"}
+{"timestamp":"2025-07-20T14:30:00Z","service":"gemini","tokens":{"input":2500,"output":1500},"cost_usd":0.0090,"context":"Test suite design"}
+{"timestamp":"2025-07-20T17:00:00Z","service":"o3","tokens":{"input":600,"output":1200},"cost_usd":0.0108,"context":"Architecture blueprint"}
+{"timestamp":"2025-07-20T19:30:00Z","service":"gemini","tokens":{"input":1200,"output":600},"cost_usd":0.0036,"context":"PR review"}
+{"timestamp":"2025-07-20T21:00:00Z","service":"ccusage","session_id":"test-20250720","model":"claude-3-5-sonnet","tokens":{"input":5000,"output":3000},"cost_usd":0.0600,"context":"AI activation implementation"}

@@ -33,5 +33,5 @@ PAYLOAD=$(cat <<EOF
 EOF
 )
 
-# Call the modular dispatcher (v2.1)
+# Call the modular dispatcher (v2.2)
 echo "$PAYLOAD" | ./hooks/dispatcher.sh "$HOOK_TYPE"

@@ -1,44 +1,63 @@
 #!/bin/bash
-# hooks/dispatcher.d/common/metrics.sh - Metrics emission helpers
+# hooks/dispatcher.d/common/metrics.sh - Enhanced metrics emission for AI activation
 #
-# Purpose: Collect and emit metrics for monitoring
+# Purpose: Export both StatsD and JSONL for local devs without StatsD dependency
 
-# Initialize metrics file
-METRICS_FILE=".claude/metrics.csv"
-mkdir -p "$(dirname "$METRICS_FILE")" 2>/dev/null || true
+set -euo pipefail
 
-# Emit a metric
+# Initialize metrics directories  
+METRICS_DIR="docs/ci-status/metrics"
+LEGACY_METRICS_FILE=".claude/metrics.csv"
+JSONL_METRICS_FILE="$METRICS_DIR/pipeline-metrics-$(date +%Y-%m).jsonl"
+
+mkdir -p "$METRICS_DIR" "$(dirname "$LEGACY_METRICS_FILE")" 2>/dev/null || true
+
+# Emit a metric with both StatsD and JSONL
 emit_metric() {
-    local metric=$1
-    local value=$2
-    local tags=${3:-}
+    local metric_name="$1"
+    local metric_value="${2:-1}"
+    local metric_type="${3:-c}" # c for count, g for gauge, ms for timing
+    local tags="${4:-}"
+    
+    # Flatten metric names (no dots inside tags for StatsD compatibility)
+    local flat_name="${metric_name//./_}"
     
     # GitHub Actions annotation
     if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
-        echo "::notice title=Metric::${metric}=${value} ${tags}"
+        echo "::notice title=Metric::${flat_name}=${metric_value} ${tags}"
     fi
     
     # StatsD emission (if configured)
     if [[ -n "${STATSD_HOST:-}" ]]; then
-        echo "${metric}:${value}|c|${tags}" | nc -w1 -u "$STATSD_HOST" 8125 2>/dev/null || true
+        local statsd_port="${STATSD_PORT:-8125}"
+        echo "${flat_name}:${metric_value}|${metric_type}" | nc -u -w0 "$STATSD_HOST" "$statsd_port" 2>/dev/null || true
     fi
     
-    # Local metrics file (for dashboard queries)
-    echo "$(date -u +%s),${metric},${value},${tags}" >> "$METRICS_FILE"
+    # JSONL logging for local development and dashboards
+    jq -n \
+        --arg timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+        --arg name "$flat_name" \
+        --arg value "$metric_value" \
+        --arg type "$metric_type" \
+        --arg tags "$tags" \
+        '{timestamp: $timestamp, name: $name, value: ($value | tonumber), type: $type, tags: $tags}' >> "$JSONL_METRICS_FILE"
+    
+    # Legacy CSV for backward compatibility
+    echo "$(date -u +%s),${flat_name},${metric_value},${tags}" >> "$LEGACY_METRICS_FILE"
     
     # Debug output
     if [[ "${NEXTRUST_DEBUG:-0}" == "1" ]]; then
-        echo "[METRIC] ${metric}=${value} ${tags}"
+        echo "[METRIC] ${flat_name}=${metric_value}|${metric_type} ${tags}"
     fi
 }
 
-# Emit counter metric
+# Emit counter metric with AI service-friendly naming
 emit_counter() {
     local metric=$1
     local increment=${2:-1}
     local tags=${3:-}
     
-    emit_metric "${metric}.count" "$increment" "$tags"
+    emit_metric "${metric}_total" "$increment" "c" "$tags"
 }
 
 # Emit timing metric
@@ -47,7 +66,20 @@ emit_timing() {
     local duration=$2
     local tags=${3:-}
     
-    emit_metric "${metric}.duration_ms" "$duration" "$tags"
+    emit_metric "${metric}_secs" "$duration" "ms" "$tags"
+}
+
+# AI service metrics helpers
+emit_ai_usage() {
+    local service=$1  # "gemini" or "o3"
+    local tokens_in=$2
+    local tokens_out=$3
+    local cost_usd=$4
+    local tags=${5:-}
+    
+    emit_metric "ccusage_tokens_total" "$tokens_in" "c" "service:${service},direction:input,${tags}"
+    emit_metric "ccusage_tokens_total" "$tokens_out" "c" "service:${service},direction:output,${tags}"
+    emit_metric "ai_cost_usd" "$cost_usd" "g" "service:${service},${tags}"
 }
 
 # Automatic hook timing
