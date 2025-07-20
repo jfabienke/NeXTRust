@@ -1,21 +1,20 @@
+[workspace]
+members = [
+    "src/crates/nextstep-sys",
+]
+
 [package]
-name = "nextrust"
+name = "nextrust-examples"
 version = "0.1.0"
 edition = "2021"
 
-[dependencies]
-
 [[example]]
-name = "hello-no-std"
-path = "src/examples/hello-no-std.rs"
+name = "hello"
+path = "src/examples/hello.rs"
 
-[profile.dev]
-panic = "abort"
-opt-level = "z"
-lto = false
+[[test]]
+name = "atomic_smoke"
+path = "tests/atomic_smoke.rs"
 
-[profile.release]
-panic = "abort"
-opt-level = "z"
-lto = true
-strip = true
+[dependencies]
+nextstep-sys = { path = "src/crates/nextstep-sys" }

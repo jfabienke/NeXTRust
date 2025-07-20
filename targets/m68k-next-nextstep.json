@@ -1,7 +1,7 @@
 {
   "arch": "m68k",
-  "os": "none",
-  "vendor": "unknown",
+  "os": "nextstep",
+  "vendor": "next",
   "linker-flavor": "gcc",
   "linker": "clang",
   "data-layout": "E-m:e-p:32:16:32-i8:8:8-i16:16:16-i32:16:32-n8:16:32-a:0:16-S16",
@@ -17,8 +17,8 @@
   "code-model": "large",
   "function-sections": false,
   "is-builtin": false,
-  "min-atomic-width": 8,
-  "max-atomic-width": 32,
+  "min-atomic-width": 0,
+  "max-atomic-width": 0,
   "atomic-cas": false,
   "features": "+68030",
   "dynamic-linking": false,
@@ -51,5 +51,5 @@
   "static-position-independent-executables": false,
   "trap-unreachable": true,
   "singlethread": true,
-  "_last_modified": "2025-07-20 16:13:00 EEST"
+  "_last_modified": "2025-07-20 22:39:00 EEST"
 }

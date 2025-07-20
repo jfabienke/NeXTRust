@@ -1,0 +1,15 @@
+[package]
+name = "nextstep-sys"
+version = "0.1.0"
+edition = "2021"
+authors = ["NeXTRust Contributors"]
+description = "Low-level bindings to NeXTSTEP system calls"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+
+[lib]
+name = "nextstep_sys"
+
+[features]
+default = []
