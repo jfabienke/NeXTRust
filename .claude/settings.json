@@ -5,7 +5,7 @@
         "matcher": "Bash",
         "hooks": [{
           "type": "command",
-          "command": "./hooks/dispatcher-v2.sh pre",
+          "command": "./hooks/dispatcher.sh pre",
           "timeout": 90
         }]
       }
@@ -15,11 +15,30 @@
         "matcher": "Bash",
         "hooks": [{
           "type": "command",
-          "command": "./hooks/dispatcher-v2.sh post",
+          "command": "./hooks/dispatcher.sh post",
           "timeout": 300
         }]
       }
     ],
-    "Stop": []
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [{
+          "type": "command",
+          "command": "./hooks/dispatcher.sh stop",
+          "timeout": 60
+        }]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [{
+          "type": "command",
+          "command": "./hooks/dispatcher.sh user-prompt-submit",
+          "timeout": 30
+        }]
+      }
+    ]
   }
 }

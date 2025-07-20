@@ -1,8 +1,8 @@
 # NeXTRust CI Pipeline: Claude Code-First Architecture
 
-*Last updated: 2025-07-18 16:30*
+*Last updated: 2025-07-20 07:49*
 
-> **Version:** 2.0 - Modular dispatcher architecture with enhanced robustness
+> **Version:** 2.1 - Unified modular dispatcher architecture with consolidated components
 
 ## Overview
 
@@ -16,10 +16,10 @@ The NeXTRust CI pipeline leverages Claude Code's native hook capabilities as the
 4. **Hook-Based Orchestration**: No client-side git hooks needed
 5. **Idempotent Operations**: Safe for retries and context resets
 
-## Version 2.0 Enhancements
+## Version 2.1 Enhancements
 
-### Modular Dispatcher Architecture
-- **Thin Router**: Main dispatcher (`hooks/dispatcher-v2.sh`) reduced to ~30 lines
+### Unified Modular Dispatcher Architecture
+- **Single Dispatcher**: Main dispatcher (`hooks/dispatcher.sh`) consolidated from separate v2 variants
 - **Module Organization**: Clear separation in `hooks/dispatcher.d/`
   - `common/` - Shared utilities (setup, cleanup, metrics, idempotency)
   - `pre-tool-use/` - Pre-execution validations

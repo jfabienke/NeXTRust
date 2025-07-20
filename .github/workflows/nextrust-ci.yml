@@ -58,7 +58,7 @@ jobs:
       - name: Execute Slash Command
         run: |
           # The dispatcher will detect CI_COMMAND and route appropriately
-          ./hooks/dispatcher-v2.sh slash-command
+          ./hooks/dispatcher.sh slash-command
       
   build-matrix:
     # Skip for slash command executions
@@ -92,7 +92,7 @@ jobs:
       - name: Setup Claude Code Environment
         run: |
           # Ensure hooks are executable
-          chmod +x hooks/dispatcher-v2.sh
+          chmod +x hooks/dispatcher.sh
           chmod +x hooks/dispatcher.d/**/*.sh
           chmod +x ci/scripts/*.sh
           chmod +x ci/scripts/*.py
@@ -147,7 +147,7 @@ jobs:
           GITHUB_RUN_ATTEMPT: ${{ github.run_attempt }}
           RUNNER_NAME: ${{ runner.name }}
         run: |
-          # The scripts will trigger hooks via dispatcher-v2.sh when needed
+          # The scripts will trigger hooks via dispatcher.sh (v2.1) when needed
           ci/scripts/build-custom-llvm.sh \
             --cpu-variant ${{ matrix.cpu_variant }}
       

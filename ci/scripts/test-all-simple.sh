@@ -75,7 +75,7 @@ echo
 echo "═══ Hook System Tests ═══"
 
 run_test "Dispatcher executable" \
-    "test -x hooks/dispatcher-v2.sh"
+    "test -x hooks/dispatcher.sh"
 
 run_test "Pre-tool-use hooks" \
     "ls hooks/dispatcher.d/pre-tool-use/*.sh >/dev/null 2>&1"
@@ -141,8 +141,8 @@ run_test "Status append wrapper" \
 echo
 echo "═══ Version 2.x Features ═══"
 
-run_test "Dispatcher v2" \
-    "test -f hooks/dispatcher-v2.sh"
+run_test "Dispatcher v2.1 unified" \
+    "test -f hooks/dispatcher.sh"
 
 run_test "Unified failure analysis" \
     "grep -q 'analyze_failure' hooks/dispatcher.d/common/failure-analysis.sh"

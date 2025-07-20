@@ -1,91 +1,86 @@
 #!/bin/bash
-# hooks/dispatcher.sh - Intelligent hook dispatcher
+# hooks/dispatcher.sh - NeXTRust CI/CD Pipeline Dispatcher v2.1
 #
-# Purpose: Routes Claude Code hooks to appropriate handlers based on context
+# Purpose: Thin router that delegates to specialized modular handlers
 # Inputs: Hook type ($1) and JSON payload (stdin)
 # Outputs: Logs to .claude/hook-logs/, updates status artifacts
 # Usage: Called automatically by Claude Code via settings.json
+# Architecture: Modular dispatcher with specialized handlers in dispatcher.d/
 
-set -uo pipefail  # Exit on undefined vars, pipe failures
-# Don't use -e to allow proper error handling
+set -uo pipefail
 
 # Note: CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR=1 ensures we're always in project root
 # No need for manual cd commands
 
 HOOK_TYPE=${1:-}
-PAYLOAD=$(cat)  # JSON from Claude Code
 
-# Setup logging
-LOG_DIR=".claude/hook-logs"
-mkdir -p "$LOG_DIR" 2>/dev/null || true
-LOG_FILE="$LOG_DIR/$(date +%Y%m%d-%H%M%S)-$HOOK_TYPE.log"
-exec 1> >(tee -a "$LOG_FILE")
-exec 2>&1
+# Always log that dispatcher was called
+echo "[$(date)] NeXTRust CI/CD Pipeline Dispatcher v2.1 called with type: ${HOOK_TYPE:-none}"
 
-echo "[$(date)] Hook dispatcher started: $HOOK_TYPE"
-
-# Extract relevant fields with error handling
-if ! echo "$PAYLOAD" | jq empty 2>/dev/null; then
-    echo "[$(date)] Invalid JSON payload, exiting cleanly"
+# Check for slash command mode FIRST
+if [[ -n "${CI_COMMAND:-}" ]]; then
+    echo "[$(date)] Executing slash command: $CI_COMMAND"
+    
+    # Create directory for slash commands if needed
+    mkdir -p ci/scripts/slash
+    
+    # Execute command script if exists
+    COMMAND_SCRIPT="ci/scripts/slash/${CI_COMMAND}.sh"
+    if [[ -f "$COMMAND_SCRIPT" && -x "$COMMAND_SCRIPT" ]]; then
+        # Pass args safely with proper quoting
+        "$COMMAND_SCRIPT" "${CI_ARGS:-}"
+    else
+        # Command not found - post error to PR
+        if [[ -n "${CI_PR_NUMBER:-}" ]] && command -v gh &> /dev/null; then
+            gh api repos/${GITHUB_REPOSITORY}/issues/${CI_PR_NUMBER}/comments \
+                -f body="❌ Unknown command: \`$CI_COMMAND\`. Try \`/ci-help\` for available commands."
+        fi
+        echo "[ERROR] Unknown slash command: $CI_COMMAND"
+        exit 1
+    fi
+    
     exit 0
 fi
 
-TOOL_NAME=$(echo "$PAYLOAD" | jq -r '.tool_name // empty' 2>/dev/null || echo "")
-COMMAND=$(echo "$PAYLOAD" | jq -r '.tool_args.command // empty' 2>/dev/null || echo "")
-EXIT_CODE=$(echo "$PAYLOAD" | jq -r '.tool_response.exit_code // 0' 2>/dev/null || echo "0")
-SESSION_ID=$(echo "$PAYLOAD" | jq -r '.session_id' 2>/dev/null || echo "unknown")
+# Normal hook processing
+export PAYLOAD=$(cat)  # JSON from Claude Code
 
-# Idempotency check with runner-specific session files
-RUNNER_NAME="${RUNNER_NAME:-local}"
-OS_NAME="${GITHUB_JOB:-${OS:-unknown}}"
-CPU_VARIANT="${CPU_VARIANT:-default}"
-SESSION_DIR=".claude/sessions"
-SESSION_FILE="$SESSION_DIR/$RUNNER_NAME-$OS_NAME-$CPU_VARIANT.session"
-
-mkdir -p "$SESSION_DIR" 2>/dev/null || true
-LAST_SESSION=$(cat "$SESSION_FILE" 2>/dev/null || echo "")
-if [[ "$SESSION_ID" == "$LAST_SESSION" ]]; then
-    echo "[$(date)] Skipping duplicate session: $SESSION_ID"
-    exit 0  # Already processed this session
+# Validate hook type
+if [[ -z "$HOOK_TYPE" ]]; then
+    echo "[ERROR] No hook type provided"
+    exit 0
 fi
 
-# Failure loop protection
-COMMIT_SHA=$(git rev-parse HEAD 2>/dev/null || echo "no-commit")
-BACKOFF_FILE=".claude/backoff/$COMMIT_SHA"
-if [[ -f "$BACKOFF_FILE" ]]; then
-    FAILURE_COUNT=$(cat "$BACKOFF_FILE")
-    if [[ "$FAILURE_COUNT" -ge 3 ]]; then
-        echo "::error::Commit $COMMIT_SHA has failed $FAILURE_COUNT times. Push new commit to retry."
-        exit 1
-    fi
+# Normalize hook type (handle both formats)
+if [[ "$HOOK_TYPE" == "UserPromptSubmit" ]]; then
+    HOOK_TYPE="user-prompt-submit"
+elif [[ "$HOOK_TYPE" == "ToolOutput" ]]; then
+    HOOK_TYPE="tool-output"
 fi
 
-case "$HOOK_TYPE" in
-    pre)
-        # PreToolUse: Validate phase alignment
-        if [[ "$COMMAND" =~ "build-custom-llvm.sh" ]]; then
-            ./ci/scripts/validate-phase.sh || exit 1
-        fi
-        ;;
-        
-    post)
-        # PostToolUse: Handle failures
-        if [[ "$EXIT_CODE" != "0" ]]; then
-            # Increment failure count for this commit
-            mkdir -p .claude/backoff
-            FAILURE_COUNT=$(cat "$BACKOFF_FILE" 2>/dev/null || echo "0")
-            echo $((FAILURE_COUNT + 1)) > "$BACKOFF_FILE"
-            
-            ./ci/scripts/analyze-failure.sh "$COMMAND" "$EXIT_CODE"
-        fi
-        ;;
-        
-    stop)
-        # Stop: Do nothing, just exit cleanly
-        # This prevents any errors when Claude Code's cached config calls this
-        exit 0
-        ;;
-esac
+# Setup base environment
+if [[ -f "hooks/dispatcher.d/common/setup.sh" ]]; then
+    source hooks/dispatcher.d/common/setup.sh
+fi
 
-echo "$SESSION_ID" > "$SESSION_FILE"
-exit 0  # Always exit successfully
+# Route to appropriate handlers
+HOOK_DIR="hooks/dispatcher.d/${HOOK_TYPE}"
+if [[ -d "$HOOK_DIR" ]]; then
+    for script in "$HOOK_DIR"/*.sh; do
+        if [[ -f "$script" && -x "$script" ]]; then
+            echo "[$(date)] Executing: $script"
+            source "$script" || {
+                echo "[$(date)] Warning: $script exited with code $?"
+            }
+        fi
+    done
+else
+    echo "[$(date)] No handlers found for hook type: $HOOK_TYPE"
+fi
+
+# Cleanup and metrics
+if [[ -f "hooks/dispatcher.d/common/cleanup.sh" ]]; then
+    source hooks/dispatcher.d/common/cleanup.sh
+fi
+
+exit 0

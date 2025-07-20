@@ -199,4 +199,4 @@ When implementing features:
 - **Library Porting Guide**: docs/library-porting.md
 
 <!-- PEER REVIEW: Added freshness lint comment to enable automated staleness checks in CI. -->
-Last updated: 2025-07-18 4:30 PM <!-- AUTO-UPDATE-HORIZON:90d -->
+Last updated: 2025-07-20 8:30 AM <!-- AUTO-UPDATE-HORIZON:90d --> <!-- v2.1 consolidated -->
