@@ -14,7 +14,7 @@ The pipeline requires these GitHub repository secrets:
 
 | Secret Name | Purpose | Example Value |
 |-------------|---------|---------------|
-| `O3_ENDPOINT` | OpenAI API endpoint | `https://api.openai.com/v1/chat/completions` |
+| `O3_ENDPOINT` | OpenAI API endpoint | `https://api.openai.com/v1` |
 | `OPENAI_API_KEY` | OpenAI API key | `sk-proj-...` |
 | `GEMINI_API_KEY` | Google AI Studio key | `AI...` |
 | `GH_PR_TOKEN` | GitHub PAT for PR comments | `ghp_...` |
@@ -28,7 +28,7 @@ The pipeline requires these GitHub repository secrets:
 # https://github.com/NeXTRust/NeXTRust/settings/secrets/actions
 
 # Add each secret via GitHub UI or CLI:
-gh secret set O3_ENDPOINT --body "https://api.openai.com/v1/chat/completions"
+gh secret set O3_ENDPOINT --body "https://api.openai.com/v1"
 gh secret set OPENAI_API_KEY --body "your-openai-key-here"
 gh secret set GEMINI_API_KEY --body "your-gemini-key-here" 
 gh secret set GH_PR_TOKEN --body "your-github-pat-here"
@@ -38,7 +38,7 @@ gh secret set GH_PR_TOKEN --body "your-github-pat-here"
 
 ```bash
 # Add to ~/.zshrc or ~/.bashrc
-export O3_ENDPOINT="https://api.openai.com/v1/chat/completions"
+export O3_ENDPOINT="https://api.openai.com/v1"
 export OPENAI_API_KEY="sk-proj-your-key-here"
 export GEMINI_API_KEY="your-gemini-key-here"
 export STATSD_HOST="statsd.example.org:8125"
@@ -47,11 +47,11 @@ export STATSD_HOST="statsd.example.org:8125"
 ### 3.3 Smoke Test Commands
 
 ```bash
-# Test OpenAI O3 API
+# Test OpenAI O3 API (use o3-mini until org is verified for o3)
 curl -H "Authorization: Bearer $OPENAI_API_KEY" \
      -H "Content-Type: application/json" \
-     -d '{"model":"o3","messages":[{"role":"user","content":"Hello"}],"max_tokens":50}' \
-     "$O3_ENDPOINT"
+     -d '{"model":"o3-mini","input":"Hello","max_tokens":50}' \
+     "$O3_ENDPOINT/responses"
 
 # Test Gemini CLI
 echo "Test prompt" | gemini --model gemini-2.5-pro

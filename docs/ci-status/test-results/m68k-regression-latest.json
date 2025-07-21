@@ -1,0 +1,8 @@
+{
+  "test": "m68k-regression",
+  "status": "passed",
+  "timestamp": "2025-07-21T06:48:13Z",
+  "build_time": "0.04s",
+  "object_files":       18,
+  "log_file": "/Users/johnfabienke/Development/NeXTRust/docs/ci-status/test-results/m68k-regression-20250721-094813.log"
+}

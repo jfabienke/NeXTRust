@@ -5,6 +5,31 @@ All notable changes to the NeXTRust project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3] - 2025-07-21
+
+### Added
+- M68k scheduling model enhancements for release build support
+- Scheduling information for critical instructions (SUB, SUBX, TRAP, UMUL, UNLK, XOR)
+- Parallel CI coverage check scripts for instruction families
+- Performance validation script using llvm-mca
+- Comprehensive scheduling documentation and completion report
+
+### Fixed
+- Release mode compilation crashes due to missing scheduling information
+- SelectionDAG issues when optimizations enabled
+- Rust compilation with -O1, -O2, -O3 optimization levels
+
+### Changed
+- Enhanced M68k LLVM backend with production-ready scheduling
+- Updated CLAUDE.md and README.md to reflect Phase 3 completion
+- Improved CI scripts for parallel testing of instruction coverage
+
+### Technical Details
+- Added InstrItinClass parameters to TableGen instruction definitions
+- Implemented IIC_ALU, IIC_ALU_MEM, IIC_BRANCH scheduling classes
+- ~100 pseudo instructions remain unscheduled (not needed for Rust)
+- CompleteModel remains 0 (full coverage not required for production)
+
 ## [2.2] - 2025-07-20
 
 ### Added

@@ -100,7 +100,7 @@ echo "  Phase: $PHASE"
 # Check for rate limiting (don't make too many O3 requests)
 if [[ "$FORCE_REQUEST" != "true" ]]; then
     # Check if we've made recent O3 requests
-    local recent_requests=0
+    recent_requests=0
     if [[ -f "docs/ci-status/metrics/pipeline-metrics-$(date +%Y-%m).jsonl" ]]; then
         recent_requests=$(grep -c "o3.*design" "docs/ci-status/metrics/pipeline-metrics-$(date +%Y-%m).jsonl" 2>/dev/null || echo 0)
     fi
@@ -117,7 +117,7 @@ if [[ "$FORCE_REQUEST" != "true" ]]; then
 fi
 
 # Build context for O3
-local context_data=""
+context_data=""
 if [[ -n "$ERROR" ]]; then
     context_data="error_analysis:$PHASE"
 elif [[ -n "$PROMPT" ]]; then

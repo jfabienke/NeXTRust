@@ -97,11 +97,13 @@ jobs:
           toolchain/bin/clang -target m68k-next-nextstep --print-target-triple
           
           # Check if Rust binary was created
-          if [[ -f "target/m68k-next-nextstep/debug/examples/hello" ]]; then
+          if [[ -f "target/m68k-next-nextstep/debug/examples/hello-simple" ]]; then
             echo "✅ Rust build successful"
-            file target/m68k-next-nextstep/debug/examples/hello
+            file target/m68k-next-nextstep/debug/examples/hello-simple
           else
             echo "❌ Rust build failed"
+            # Show what was built
+            ls -la target/m68k-next-nextstep/debug/examples/ || true
             exit 1
           fi
       

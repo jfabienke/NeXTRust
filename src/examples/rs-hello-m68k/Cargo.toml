@@ -1,0 +1,22 @@
+[package]
+name = "rs-hello-m68k"
+version = "0.1.0"
+edition = "2021"
+description = "Regression test for M68k-NeXTSTEP Rust compilation"
+authors = ["NeXTRust Team"]
+
+# This crate serves as a regression test to ensure the M68k scheduling model
+# continues to work after LLVM updates
+
+[workspace]
+# This is a standalone test crate
+
+[dependencies]
+# No dependencies - pure no_std test
+
+[profile.release]
+# Optimize for size on vintage hardware
+opt-level = "z"
+lto = true
+panic = "abort"
+strip = true

@@ -123,6 +123,7 @@ request_gemini_review() {
 request_o3_design() {
     local context="${CONTEXT:-$1}"
     local error="${2:-}"
+    local custom_prompt="${PROMPT:-}"
     
     # Check if we've seen this before
     if [[ -f "docs/ci-status/known-issues.json" ]] && [[ -n "$error" ]]; then
@@ -154,12 +155,28 @@ EOF
         return 0
     fi
     
-    # Call o3 API
+    # Prepare content with proper escaping
+    local user_content="${custom_prompt:-Context: $context\n\nError: $error\n\nPhase: $phase_id\n\nPlease analyze this issue and provide: 1) Root cause analysis, 2) Specific fix recommendations, 3) Code changes needed.}"
+    
+    # Escape the content for JSON
+    user_content=$(echo "$user_content" | jq -Rs .)
+    
+    # Prepare O3 Responses API request
+    # Use o3-mini for now, can switch to "o3" or "o3-2025-04-16" when org is verified
+    local o3_request=$(cat <<EOF
+{
+  "model": "o3-mini",
+  "input": $user_content
+}
+EOF
+)
+    
+    # Call O3 Responses API
     echo "Requesting design decision from O3..."
-    local response=$(curl -s -X POST "$O3_ENDPOINT/design" \
+    local response=$(curl -s -X POST "$O3_ENDPOINT/responses" \
         -H "Authorization: Bearer $OPENAI_API_KEY" \
         -H "Content-Type: application/json" \
-        -d "$request")
+        -d "$o3_request")
     
     # Log decision
     if command -v python3 &>/dev/null && [[ -x "ci/scripts/status-append.py" || -x "$(which status-append.py 2>/dev/null)" ]]; then
@@ -167,8 +184,23 @@ EOF
             "{\"request\": $request, \"response\": $(echo "$response" | jq -c .)}" 2>/dev/null || true
     fi
     
-    echo "Design decision received and logged"
-    echo "$response" | jq . 2>/dev/null || echo "$response"
+    # Check for errors
+    if echo "$response" | jq -e '.error' >/dev/null 2>&1; then
+        echo "Error from O3 API:"
+        echo "$response" | jq '.error' 2>/dev/null || echo "$response"
+        return 1
+    fi
+    
+    # Extract and display the response text
+    echo "Design decision received:"
+    echo "----------------------------------------"
+    echo "$response" | jq -r '.output[] | select(.type == "message") | .content[] | select(.type == "output_text") | .text' 2>/dev/null || echo "$response"
+    echo "----------------------------------------"
+    
+    # Show usage stats
+    local total_tokens=$(echo "$response" | jq -r '.usage.total_tokens // 0' 2>/dev/null)
+    local reasoning_tokens=$(echo "$response" | jq -r '.usage.output_tokens_details.reasoning_tokens // 0' 2>/dev/null)
+    echo "Token usage: $total_tokens total (including $reasoning_tokens reasoning tokens)"
 }
 
 # Gemini CLI implementation

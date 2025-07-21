@@ -1,0 +1,23 @@
+Please review this technical report documenting the resolution of a rustc crash for the m68k-next-nextstep target.
+
+Context: This is part of the NeXTRust project enabling Rust development for historic NeXTSTEP systems on m68k architecture. The report describes how we fixed a critical compiler crash in LLVM's SelectionDAG scheduling phase.
+
+Key areas to review:
+1. Technical accuracy of the M68k scheduling model implementation
+2. Completeness of the TableGen definitions (FuncUnits, Itineraries, etc.)
+3. Appropriateness of cycle counts for M68k processors
+4. Quality of the O3 integration updates
+5. Clarity and completeness of the documentation
+
+Specific questions:
+- Are the cycle counts realistic for M68k processors (especially 68030/68040)?
+- Is setting CompleteModel=0 acceptable as a temporary solution?
+- Should we add more instruction itinerary classes?
+- Are there any M68k-specific scheduling concerns we missed?
+
+Report content:
+@docs/core/m68k-rustc-crash-resolution-report.md
+
+Additional files for context:
+@llvm-project/llvm/lib/Target/M68k/M68kSchedule.td
+@ci/scripts/request-ai-service.sh

@@ -1,0 +1,64 @@
+{
+  "test_date": "2025-07-21T06:40:36Z",
+  "total_models": 7,
+  "passed": 7,
+  "failed": 0,
+  "results": [
+{
+  "cpu_model": "generic",
+  "status": "success",
+  "timestamp": "2025-07-21T06:40:36Z",
+  "build_time": "0.26s",
+  "object_files":       18
+}
+,
+{
+  "cpu_model": "M68000",
+  "status": "success",
+  "timestamp": "2025-07-21T06:40:36Z",
+  "build_time": "0.05s",
+  "object_files":       18
+}
+,
+{
+  "cpu_model": "M68010",
+  "status": "success",
+  "timestamp": "2025-07-21T06:40:36Z",
+  "build_time": "0.05s",
+  "object_files":       18
+}
+,
+{
+  "cpu_model": "M68020",
+  "status": "success",
+  "timestamp": "2025-07-21T06:40:36Z",
+  "build_time": "0.05s",
+  "object_files":       18
+}
+,
+{
+  "cpu_model": "M68030",
+  "status": "success",
+  "timestamp": "2025-07-21T06:40:36Z",
+  "build_time": "0.05s",
+  "object_files":       18
+}
+,
+{
+  "cpu_model": "M68040",
+  "status": "success",
+  "timestamp": "2025-07-21T06:40:36Z",
+  "build_time": "0.05s",
+  "object_files":       18
+}
+,
+{
+  "cpu_model": "M68060",
+  "status": "success",
+  "timestamp": "2025-07-21T06:40:36Z",
+  "build_time": "0.05s",
+  "object_files":       18
+}
+
+  ]
+}

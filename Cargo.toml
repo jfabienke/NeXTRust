@@ -12,6 +12,10 @@ edition = "2021"
 name = "hello"
 path = "src/examples/hello.rs"
 
+[[example]]
+name = "hello-simple"
+path = "src/examples/hello-simple.rs"
+
 [[test]]
 name = "atomic_smoke"
 path = "tests/atomic_smoke.rs"

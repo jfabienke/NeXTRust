@@ -226,13 +226,18 @@ The pipeline maintains dual-format status artifacts:
 
 ### Important Notes
 
-- All source files are currently empty/placeholder - project is in initial setup phase
-- Requires custom toolchain build before any Rust compilation
+- **✅ Phase 3 Complete: Release builds now working!** Both debug and release modes are supported
+- **✅ M68k Scheduling Model**: Enhanced with critical instruction coverage (July 21, 2025)
+  - SUB, SUBX, TRAP, UMUL, UNLK, XOR instructions scheduled
+  - Release mode compilation with all optimization levels (-O1, -O2, -O3) functional
+  - ~100 pseudo instructions remain unscheduled but aren't needed for Rust
+- **✅ Spinlock-based atomics**: Implementation complete in compiler-rt
+- **✅ nextstep-sys crate**: Functional with basic syscall bindings
 - Testing relies entirely on emulation due to hardware constraints
 - Agent system can help with library porting and API translation tasks
 - Target triple: m68k-next-nextstep
 - ROM images required: Rev 2.5 v66 (68040) or Rev 1.x (68030)
-- Estimated timeline: 10-20 days for minimal viable target
+- Timeline achieved: Phase 3 completed ahead of schedule
 <!-- PEER REVIEW: Added token boundary hint as a guard-rail for large context windows. -->
 - If an included diff or file exceeds 150k tokens, summarise unchanged code blocks first to conserve context.
 
@@ -297,4 +302,4 @@ When implementing features:
 - **Library Porting Guide**: docs/library-porting.md
 
 <!-- PEER REVIEW: Added freshness lint comment to enable automated staleness checks in CI. -->
-Last updated: 2025-07-20 8:30 AM <!-- AUTO-UPDATE-HORIZON:90d --> <!-- v2.2 consolidated -->
+Last updated: 2025-07-21 05:31 PM EEST <!-- AUTO-UPDATE-HORIZON:90d --> <!-- v2.2 consolidated -->
