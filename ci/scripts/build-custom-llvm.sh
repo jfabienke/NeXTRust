@@ -117,18 +117,27 @@ fi
 # Build
 echo "Building LLVM (this may take a while)..."
 BUILD_LOG="${BUILD_DIR}/build.log"
-if ! cmake --build . --target install -j$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4) 2>&1 | tee "$BUILD_LOG"; then
-    # Try to extract specific error
-    if grep -q "undefined reference" "$BUILD_LOG" 2>/dev/null; then
-        emit_error "LinkError" "E006" "Linker error during build" "Check symbol definitions in patches"
-    elif grep -q "No rule to make target" "$BUILD_LOG" 2>/dev/null; then
-        emit_error "BuildError" "E007" "Missing build target" "Check CMake configuration"
-    elif grep -q "error: unknown type name" "$BUILD_LOG" 2>/dev/null; then
-        emit_error "CompileError" "E011" "Compilation error" "Check patch syntax and includes"
-    elif grep -q "CMake Error" "$BUILD_LOG" 2>/dev/null; then
-        emit_error "ConfigurationError" "E012" "CMake configuration error" "Check CMakeLists.txt files"
+cmake --build . --target install -j$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4) 2>&1 | tee "$BUILD_LOG"
+BUILD_RESULT=${PIPESTATUS[0]}
+
+# Check if build actually failed or if everything is just up-to-date
+if [[ $BUILD_RESULT -ne 0 ]]; then
+    # Check if this is just an "up-to-date" situation
+    if grep -q "Up-to-date:" "$BUILD_LOG" && grep -q "Install configuration:" "$BUILD_LOG"; then
+        echo "Build artifacts are up-to-date, skipping rebuild"
     else
-        emit_error "BuildError" "E008" "Generic build failure" "See build.log for details"
+        # Try to extract specific error
+        if grep -q "undefined reference" "$BUILD_LOG" 2>/dev/null; then
+            emit_error "LinkError" "E006" "Linker error during build" "Check symbol definitions in patches"
+        elif grep -q "No rule to make target" "$BUILD_LOG" 2>/dev/null; then
+            emit_error "BuildError" "E007" "Missing build target" "Check CMake configuration"
+        elif grep -q "error: unknown type name" "$BUILD_LOG" 2>/dev/null; then
+            emit_error "CompileError" "E011" "Compilation error" "Check patch syntax and includes"
+        elif grep -q "CMake Error" "$BUILD_LOG" 2>/dev/null; then
+            emit_error "ConfigurationError" "E012" "CMake configuration error" "Check CMakeLists.txt files"
+        else
+            emit_error "BuildError" "E008" "Generic build failure" "See build.log for details"
+        fi
     fi
 fi
 
