@@ -24,6 +24,15 @@ jobs:
         with:
           submodules: recursive
       
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      
+      - name: Install Python dependencies
+        run: |
+          pip install -r requirements.txt || echo "No requirements.txt found"
+      
       - name: Setup ccache
         uses: hendrikmuhs/ccache-action@v1.2
         with:
@@ -67,6 +76,12 @@ jobs:
         if: steps.check-llvm.outputs.llvm_cached != 'true'
         run: |
           ci/scripts/build-custom-llvm.sh --cpu-variant m68030
+      
+      - name: Setup Rust
+        run: |
+          rustup toolchain install nightly
+          rustup component add rust-src --toolchain nightly
+          rustup default nightly
       
       - name: Build Rust Target
         run: |
