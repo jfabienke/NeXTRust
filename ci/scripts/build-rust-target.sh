@@ -82,7 +82,7 @@ if [[ "$PROFILE" == "release" ]]; then
 fi
 
 # Build the example
-echo "Building hello-no-std example..."
+echo "Building hello example..."
 
 # Create build directory
 mkdir -p "target/$TARGET/$PROFILE"
@@ -90,7 +90,7 @@ mkdir -p "target/$TARGET/$PROFILE"
 # Run cargo build with our custom target
 if cargo +nightly build \
     --target "$RUST_TARGET_PATH/m68k-next-nextstep.json" \
-    --example hello-no-std \
+    --example hello \
     $CARGO_PROFILE_FLAG \
     -Z build-std=core \
     -Z build-std-features=panic_immediate_abort \
@@ -99,7 +99,7 @@ if cargo +nightly build \
     echo "Rust build completed successfully!"
     
     # Check if output file exists
-    OUTPUT_FILE="target/m68k-next-nextstep/$PROFILE/examples/hello-no-std"
+    OUTPUT_FILE="target/m68k-next-nextstep/$PROFILE/examples/hello"
     if [[ -f "$OUTPUT_FILE" ]]; then
         echo "Output binary: $OUTPUT_FILE"
         
