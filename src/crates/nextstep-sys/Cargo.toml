@@ -13,3 +13,13 @@ name = "nextstep_sys"
 
 [features]
 default = []
+
+# Profiles to match main project
+[profile.dev]
+panic = "abort"
+lto = false
+
+[profile.release]
+panic = "abort"
+lto = true
+opt-level = "s"

@@ -1,0 +1,16 @@
+[package]
+name = "nextstep-atomics"
+version = "0.1.0"
+edition = "2021"
+authors = ["NeXTRust Contributors"]
+description = "Atomic operations for M68k without native CAS"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+
+[lib]
+name = "nextstep_atomics"
+crate-type = ["staticlib", "rlib"]
+
+[features]
+default = []

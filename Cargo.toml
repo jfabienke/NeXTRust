@@ -1,6 +1,17 @@
 [workspace]
 members = [
     "src/crates/nextstep-sys",
+    "src/crates/nextstep-alloc",
+    "src/crates/nextstep-io",
+    "src/crates/nextstep-atomics",
+]
+exclude = [
+    "rust",
+    "rust-1.77",
+    "llvm-project",
+    "build",
+    "toolchain/xargo-workspace",
+    "toolchain/core-build-test",
 ]
 
 [package]

@@ -1,0 +1,47 @@
+{
+  "arch": "m68k",
+  "cpu": "M68030",
+  "os": "nextstep",
+  "vendor": "next",
+  "linker-flavor": "ld",
+  "linker": "ld",
+  "llvm-target": "m68k-next-nextstep",
+  "executables": true,
+  "max-atomic-width": 0,
+  "min-atomic-width": 0,
+  "atomic-cas": false,
+  "panic-strategy": "abort",
+  "features": "",
+  "data-layout": "E-m:e-p:32:16:32-i8:8:8-i16:16:16-i32:16:32-n8:16:32-a:0:16-S16",
+  "dynamic-linking": false,
+  "env": "",
+  "exe-suffix": "",
+  "position-independent-executables": false,
+  "relocation-model": "static",
+  "code-model": "small",
+  "trap-unreachable": false,
+  "disable-redzone": true,
+  "frame-pointer": "always",
+  "function-sections": false,
+  "single-use-lifetime-starts": false,
+  "singlethread": true,
+  "stack-probes": {
+    "kind": "none"
+  },
+  "target-c-int-width": "32",
+  "target-endian": "big",
+  "target-pointer-width": "32",
+  "target-family": ["unix"],
+  "llvm-abiname": "",
+  "pre-link-args": {
+    "ld": ["-Ttext", "0x1000"]
+  },
+  "post-link-args": {
+    "ld": ["-lc"]
+  },
+  "emit-debug-gdb-scripts": false,
+  "is-builtin": false,
+  "use-ctors-section": false,
+  "eh-frame-header": false,
+  "llvm-args": []
+}

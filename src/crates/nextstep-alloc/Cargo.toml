@@ -1,0 +1,16 @@
+[package]
+name = "nextstep-alloc"
+version = "0.1.0"
+edition = "2021"
+authors = ["NeXTRust Contributors"]
+description = "GlobalAlloc implementation for NeXTSTEP using Mach VM"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+nextstep-sys = { path = "../nextstep-sys" }
+
+[lib]
+name = "nextstep_alloc"
+
+[features]
+default = []

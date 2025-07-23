@@ -1,0 +1,12 @@
+{
+    "session_id": "harness_20250723_185125_12918",
+    "timestamp": "2025-07-23T18:51:25+03:00",
+    "configuration": {
+        "test_dir": "/Users/johnfabienke/Development/NeXTRust/tests",
+        "filter_pattern": "*",
+        "parallel_jobs": 1,
+        "debug": 0,
+        "dry_run": 1
+    },
+    "tests": []
+}

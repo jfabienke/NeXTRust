@@ -1,0 +1,16 @@
+[package]
+name = "nextstep-io"
+version = "0.1.0"
+edition = "2021"
+authors = ["NeXTRust Contributors"]
+description = "Basic I/O support for NeXTSTEP"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+nextstep-sys = { path = "../nextstep-sys" }
+
+[lib]
+name = "nextstep_io"
+
+[features]
+default = []

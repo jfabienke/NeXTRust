@@ -78,6 +78,21 @@ for patch in "$PATCHES_DIR"/*.patch; do
     fi
 done
 
+# Apply M68k scheduler fix to prevent SIGSEGV crashes
+echo "Applying M68k scheduler fix to prevent instruction scheduling crashes..."
+M68K_SCHED_FILE="$LLVM_DIR/llvm/lib/Target/M68k/M68kSchedule.td"
+if [[ -f "$M68K_SCHED_FILE" ]]; then
+    if ! grep -q "NoModel = 1" "$M68K_SCHED_FILE"; then
+        echo "  Adding NoModel=1 to disable problematic scheduling"
+        sed -i.bak 's/let CompleteModel = 0;/let CompleteModel = 0;\n  let NoModel = 1; \/\/ Disable scheduler to prevent crashes/' \
+            "$M68K_SCHED_FILE"
+    else
+        echo "  Scheduler fix already applied"
+    fi
+else
+    echo "  Warning: M68kSchedule.td not found at expected location"
+fi
+
 # Create build directory
 mkdir -p "$BUILD_DIR"
 cd "$BUILD_DIR" || emit_error "FileSystemError" "E004" "Cannot create build directory" "$BUILD_DIR"
@@ -102,12 +117,15 @@ else
     echo "ccache not found, building without cache"
 fi
 
+# Note: LLVM_INSTALL_UTILS=ON is required to install FileCheck and other utilities
+# that are needed by the Rust test suite
 if ! cmake -G Ninja \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR" \
-    -DLLVM_TARGETS_TO_BUILD="X86;M68k" \
+    -DLLVM_TARGETS_TO_BUILD="X86;M68k;AArch64" \
     -DLLVM_ENABLE_PROJECTS="clang;lld" \
     -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD="M68k" \
+    -DLLVM_INSTALL_UTILS=ON \
     -DLLVM_CCACHE_BUILD="$CCACHE_OPTION" \
     "../../$LLVM_DIR/llvm"; then
     
@@ -145,6 +163,11 @@ fi
 echo "Validating build..."
 if [[ ! -x "$INSTALL_DIR/bin/clang" ]]; then
     emit_error "ValidationError" "E009" "Clang binary not found after build" "$INSTALL_DIR/bin/clang"
+fi
+
+# Check for FileCheck (required by Rust test suite)
+if [[ ! -x "$INSTALL_DIR/bin/FileCheck" ]]; then
+    emit_error "ValidationError" "E013" "FileCheck binary not found after build" "$INSTALL_DIR/bin/FileCheck"
 fi
 
 # Test with simple program

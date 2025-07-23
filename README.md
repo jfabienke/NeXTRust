@@ -63,15 +63,15 @@ This project involves juggling multiple technical feats simultaneously:
 **Phase 1** (Days 1-2): Environment setup and MCP configuration ✅
 **Phase 2** (Days 3-7): LLVM backend modifications for Mach-O ✅
 **Phase 3** (Days 8-10): Rust target specification and `no_std` Hello World ✅ **COMPLETE!**
-**Phase 4** (Days 11-13): Emulation infrastructure and automated testing 🚧
+**Phase 4** (Days 11-13): Emulation infrastructure and automated testing 🚧 **IN PROGRESS**
 **Phase 5** (Days 14-17): CI pipeline integration 🚧
 **Phase 6** (Days 18-20): Documentation and upstream submission 📝
 
-**Current Status**: Phase 3 complete! Release builds fully functional!
+**Current Status**: Early Phase 4 - Core runtime libraries implemented, working on custom rustc build
 
 ## 📊 Current Status
 
-**Last Updated**: July 21, 2025, 5:31 PM EEST
+**Last Updated**: July 22, 2025, 10:57 PM EEST
 
 ### ✅ What's Working
 - **Custom LLVM Backend**: M68k Mach-O support with scattered relocations
@@ -80,18 +80,25 @@ This project involves juggling multiple technical feats simultaneously:
 - **Debug Builds**: Full support for unoptimized compilation
 - **Release Builds**: ✅ FULLY WORKING! All optimization levels (-O1, -O2, -O3) supported
 - **M68k Scheduling Model**: Critical instructions scheduled (SUB, SUBX, TRAP, UMUL, UNLK, XOR)
-- **nextstep-sys Crate**: Basic syscall bindings operational
+- **Core Runtime Libraries**:
+  - `nextstep-sys`: Complete FFI bindings (~516 lines, all major syscalls)
+  - `nextstep-alloc`: Custom allocator using Mach VM operations
+  - `nextstep-io`: Basic I/O traits and implementations
 
 ### 🚧 In Progress
-- **Standard Library**: Partial `no_std` support, working toward `std`
+- **Custom rustc Build**: ✅ COMPLETED! Rust 1.77 built with custom LLVM 17
+- **LLVM Scheduling Fix**: ✅ COMPLETED! Disabled M68k instruction scheduling to prevent crashes
+- **Standard Library**: Building core library with xargo for M68k target
 - **Emulator Testing**: Previous/QEMU integration for automated testing
 - **CI/CD Pipeline**: v2.2 dispatcher with AI-assisted development
 
 ### 🎯 Next Milestones
+- **Immediate**: Build core library for M68k using xargo
+- **Next**: Compile and test hello-world binary in emulator
+- Test nextstep-sys, nextstep-alloc, and nextstep-io crates in real environment
+- Complete emulator integration for automated testing
 - Implement TLS support for thread-local storage
-- Port core Rust libraries (libc, system allocator)
 - Create NeXTSTEP-specific APIs for UI and Display PostScript
-- Complete scheduling for remaining pseudo instructions (optional)
 
 ## 🛠️ Getting Started
 
@@ -115,8 +122,11 @@ git submodule init && git submodule update
 ### Build the Magic
 
 ```bash
-# Build custom LLVM with NeXT patches
+# Build custom LLVM with NeXT patches (includes AArch64 for Apple Silicon)
 ./ci/scripts/build-custom-llvm.sh
+
+# Build Rust 1.77 with custom LLVM (automated script)
+./ci/scripts/build-rust-1.77.sh
 
 # Compile your first NeXT binary!
 cargo +nightly build --target=targets/m68k-next-nextstep.json -Z build-std=core --example hello-world
@@ -124,6 +134,18 @@ cargo +nightly build --target=targets/m68k-next-nextstep.json -Z build-std=core 
 # Now with release mode support! 🎉
 cargo +nightly build --target=targets/m68k-next-nextstep.json -Z build-std=core --release
 ```
+
+### Build Requirements
+
+**For Apple Silicon Macs**, install dependencies:
+```bash
+brew install cmake ninja ccache zstd
+```
+
+**Important**: Our build scripts automatically handle:
+- Setting up library paths for Homebrew on Apple Silicon
+- Including AArch64 target in LLVM for host compilation
+- Working around dsymutil issues on macOS
 
 ### Run in Emulation
 
@@ -519,4 +541,4 @@ MIT License - Because great hacks should be free!
 
 **Let's invent a future where Rust runs on everything - even the past!** 🦀🖤
 
-*Last updated: 2025-07-21 5:31 PM EEST*
+*Last updated: 2025-07-22 10:57 PM EEST*

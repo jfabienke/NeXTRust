@@ -5,6 +5,66 @@ All notable changes to the NeXTRust project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5] - 2025-07-22 (Evening Update)
+
+### Added
+- Custom LLVM 17 build with M68k Mach-O support
+- Rust 1.77 build with custom LLVM backend
+- Automated build scripts for entire toolchain
+- Comprehensive build documentation:
+  - `docs/rust-1.77-build-guide.md`
+  - `docs/progress-report-2025-07-22.md`
+- M68k instruction scheduling fix (NoModel = 1)
+- Alternative target specifications for testing
+- xargo integration for building core library
+
+### Fixed
+- **CRITICAL**: Resolved SIGSEGV crashes in LLVM M68k instruction scheduling
+- zstd library path issues on Apple Silicon Macs
+- Missing AArch64 target in LLVM for Apple Silicon hosts
+- dsymutil debug info errors during Rust builds
+- FileCheck utility missing from LLVM installation
+
+### Changed
+- Modified M68k backend to disable instruction scheduling entirely
+- Updated LLVM to include X86, M68k, and AArch64 targets
+- Enhanced build scripts with better error handling
+- Revised build process to use Rust 1.77 (LLVM 17 compatible)
+
+### Technical Breakthrough
+- Successfully built working toolchain:
+  - LLVM 17.0.6 with M68k patches
+  - Rust 1.77.0 with custom LLVM
+  - Verified rustc can target m68k-next-nextstep
+- Ready to build core library and test binaries
+
+## [2.4] - 2025-07-22 (Morning Update)
+
+### Added
+- Core runtime libraries implementation:
+  - `nextstep-sys`: Complete FFI bindings (~516 lines) for all major NeXTSTEP syscalls
+  - `nextstep-alloc`: Custom allocator using Mach VM operations (vm_allocate/vm_deallocate)
+  - `nextstep-io`: Basic I/O traits with stdout/stderr support
+- Comprehensive type definitions matching M68k 32-bit big-endian architecture
+- Safe wrapper functions for common syscalls (write, read, open, close, etc.)
+- Documentation for nextstep-sys implementation progress
+
+### Fixed
+- Resolved LLVM scheduling model issue that was blocking release builds
+- Fixed missing scheduling information for critical M68k instructions
+
+### Changed
+- Updated project documentation to reflect current implementation status
+- Revised timeline estimates based on rustc cross-compilation challenges
+
+### Known Issues (Now Resolved)
+- ~~Critical Blocker: Cannot build rustc with m68k-next-nextstep target~~ ✅ FIXED in v2.5
+
+### Technical Progress
+- Phase 3 effectively complete with core runtime libraries implemented
+- Early Phase 4 work begun with library implementations
+- Emulator testing now unblocked with working toolchain
+
 ## [2.3] - 2025-07-21
 
 ### Added

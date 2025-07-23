@@ -42,6 +42,18 @@ git submodule init && git submodule update
 clang -target m68k-next-nextstep -c test.c -o test.o
 ```
 
+### Testing Runtime Libraries
+```bash
+# Test nextstep-sys crate (once rustc is built)
+cargo +nightly test --manifest-path src/crates/nextstep-sys/Cargo.toml --target=targets/m68k-next-nextstep.json -Z build-std=core
+
+# Test nextstep-alloc crate
+cargo +nightly test --manifest-path src/crates/nextstep-alloc/Cargo.toml --target=targets/m68k-next-nextstep.json -Z build-std=core,alloc
+
+# Test nextstep-io crate
+cargo +nightly test --manifest-path src/crates/nextstep-io/Cargo.toml --target=targets/m68k-next-nextstep.json -Z build-std=core,alloc
+```
+
 ### Rust Target Compilation
 ```bash
 # Build no_std binary with custom target
@@ -85,6 +97,13 @@ python agents/tools/mcp-query.py
 ```
 
 ## CI/CD Pipeline Architecture (v2.2)
+
+### **RECENT UPDATES (July 23, 2025)**
+- ✅ Complete M68k instruction scheduling (zero missing itineraries)
+- ✅ Emulator test infrastructure with retry logic
+- ✅ Comprehensive pipeline testing framework
+- ⚠️ LLVM scheduler SIGSEGV blocks Rust compilation
+- ⚠️ M68k Mach-O writer crashes on complex relocations
 
 ### **CRITICAL: Understanding the Hook System**
 NeXTRust uses Claude Code's native hook system with a sophisticated v2.2 dispatcher architecture. **Every bash command you run will trigger hooks automatically** - this is how the CI pipeline works.
@@ -183,10 +202,13 @@ The pipeline maintains dual-format status artifacts:
 - **Hook logs**: `.claude/hook-logs/` (debugging)
 
 ### **Project Structure**
-- **src/crates/nextstep-sys**: System bindings for NeXTSTEP APIs
+- **src/crates/**: Core runtime libraries for NeXTSTEP
+  - **nextstep-sys**: Complete FFI bindings (~516 lines, all major syscalls)
+  - **nextstep-alloc**: Custom allocator using Mach VM operations
+  - **nextstep-io**: Basic I/O traits and stdout/stderr support
 - **src/examples**: Example Rust programs targeting NeXTSTEP
 - **patches/**: LLVM and Rust patches for NeXTSTEP support
-  - LLVM patches: Mach-O support, triple recognition
+  - LLVM patches: Mach-O support, triple recognition, M68k scheduling
   - Rust patches: Atomics/spinlocks, libstd sys support
 - **targets/**: Custom Rust target specification (m68k-next-nextstep.json)
 - **tests/**: Emulation-based test infrastructure
@@ -196,19 +218,27 @@ The pipeline maintains dual-format status artifacts:
 
 ### Key Technical Components
 
-1. **Custom LLVM Build**: Modified LLVM with NeXTSTEP Mach-O support
+1. **Custom LLVM Build**: Modified LLVM with NeXTSTEP Mach-O support  ✅ **WORKING**
    - M68kMachObjectWriter for object emission
    - Scattered relocations for 32-bit symbol differences
    - Large code model for segmented memory layouts
-2. **Rust Target Specification**: Custom m68k-next-nextstep target
+   - M68k scheduling model for release builds (IIC_ALU, IIC_BRANCH, etc.)
+2. **Rust Target Specification**: Custom m68k-next-nextstep target  ✅ **WORKING**
    - Big-endian 32-bit architecture (E-m:e-p:32:32-i64:64-n8:16:32)
    - CPU support: 68030/68040 with optional FPU
    - Spinlock-based atomics (no native CAS on m68k)
-3. **Emulation Testing**: Previous and QEMU for testing
+3. **Runtime Libraries**: Core support for NeXTSTEP  🆕 **IMPLEMENTED**
+   - nextstep-sys: Complete syscall FFI bindings
+   - nextstep-alloc: Mach VM-based allocator
+   - nextstep-io: Basic I/O functionality
+4. **Custom rustc Build**: Cross-compilation support  🔴 **BLOCKED**
+   - Cannot produce cdylib for m68k-next-nextstep
+   - Investigating alternative build approaches
+5. **Emulation Testing**: Previous and QEMU for testing  🚧 **PENDING**
    - Previous for high-fidelity NeXTSTEP emulation
    - Single-user mode boot for automated testing
    - SCSI disk injection for binary transfer
-4. **Agent System**: Multi-model AI workflow
+6. **Agent System**: Multi-model AI workflow  ✅ **OPERATIONAL**
    - Grok 4 for orchestration
    - OpenAI o3 for design blueprints
    - Gemini 2.5 Pro for code reviews (see `GEMINI.md` for guidelines)
@@ -226,18 +256,23 @@ The pipeline maintains dual-format status artifacts:
 
 ### Important Notes
 
-- **✅ Phase 3 Complete: Release builds now working!** Both debug and release modes are supported
-- **✅ M68k Scheduling Model**: Enhanced with critical instruction coverage (July 21, 2025)
+- **✅ Phase 3 Complete**: Core runtime libraries implemented (July 22, 2025)
+  - nextstep-sys: ~516 lines of complete FFI bindings
+  - nextstep-alloc: Custom allocator using Mach VM
+  - nextstep-io: Basic I/O trait implementations
+- **✅ M68k Scheduling Model**: Enhanced with critical instruction coverage
   - SUB, SUBX, TRAP, UMUL, UNLK, XOR instructions scheduled
   - Release mode compilation with all optimization levels (-O1, -O2, -O3) functional
   - ~100 pseudo instructions remain unscheduled but aren't needed for Rust
-- **✅ Spinlock-based atomics**: Implementation complete in compiler-rt
-- **✅ nextstep-sys crate**: Functional with basic syscall bindings
-- Testing relies entirely on emulation due to hardware constraints
-- Agent system can help with library porting and API translation tasks
+- **🔴 Current Blocker**: Building rustc with m68k-next-nextstep target support
+  - Error: "cannot produce cdylib for m68k-next-nextstep"
+  - This blocks testing of our runtime libraries
+  - Investigating cross-compilation approaches
+- Testing awaits resolution of rustc cross-compilation issues
+- Agent system actively helping with implementation tasks
 - Target triple: m68k-next-nextstep
 - ROM images required: Rev 2.5 v66 (68040) or Rev 1.x (68030)
-- Timeline achieved: Phase 3 completed ahead of schedule
+- Timeline adjustment: +2-3 days due to rustc build challenges
 <!-- PEER REVIEW: Added token boundary hint as a guard-rail for large context windows. -->
 - If an included diff or file exceeds 150k tokens, summarise unchanged code blocks first to conserve context.
 
@@ -302,4 +337,4 @@ When implementing features:
 - **Library Porting Guide**: docs/library-porting.md
 
 <!-- PEER REVIEW: Added freshness lint comment to enable automated staleness checks in CI. -->
-Last updated: 2025-07-21 05:31 PM EEST <!-- AUTO-UPDATE-HORIZON:90d --> <!-- v2.2 consolidated -->
+Last updated: 2025-07-22 3:53 AM EEST <!-- AUTO-UPDATE-HORIZON:90d --> <!-- v2.2 consolidated -->

@@ -1,0 +1,274 @@
+# Dockerfile for Previous emulator setup
+# For running NeXTSTEP m68k binaries in CI/CD
+
+FROM ubuntu:22.04
+
+# Install dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    cmake \
+    libsdl2-dev \
+    libpng-dev \
+    zlib1g-dev \
+    xvfb \
+    x11vnc \
+    wget \
+    git \
+    python3 \
+    python3-pip \
+    genisoimage \
+    && rm -rf /var/lib/apt/lists/*
+
+# Build Previous from source
+WORKDIR /build
+RUN git clone https://github.com/probonopd/previous.git && \
+    cd previous && \
+    mkdir build && \
+    cd build && \
+    cmake .. && \
+    make -j$(nproc) && \
+    make install
+
+# Set up working directory
+WORKDIR /emulator
+RUN mkdir -p /emulator/rom \
+    /emulator/disk \
+    /emulator/iso \
+    /emulator/config \
+    /emulator/output
+
+# Copy emulator configuration templates
+# Configuration for NeXTSTEP 3.3
+COPY <<EOF /emulator/config/nextstep33.cfg
+[ConfigDialog]
+bFullScreen = FALSE
+
+[System]
+nMachineType = 1  # NextCube
+bColor = TRUE
+bTurbo = FALSE
+bRealtime = FALSE
+nCpuLevel = 3     # 68040
+nCpuFreq = 33
+bCompatibleCpu = TRUE
+nDSPType = 1
+bDSPMemoryExpansion = FALSE
+
+[Rom]
+szRom = /emulator/rom/Rev_2.5_v66.BIN
+
+[Memory]
+nMemoryBankSize0 = 16
+nMemoryBankSize1 = 16
+nMemoryBankSize2 = 0
+nMemoryBankSize3 = 0
+
+[HardDisk]
+bHardDisksWriteProtected = FALSE
+szSCSIImagePath0 = /emulator/disk/nextstep.img
+szSCSIImagePath1 = 
+szSCSIImagePath2 = /emulator/iso/test.iso
+
+[Boot]
+bAutoInsertDisk = TRUE
+nBootDevice = 0
+szBootOptions = -s  # Single user mode
+
+[Screen]
+nMonitorType = 2
+bShowStatusbar = FALSE
+bShowDriveLed = FALSE
+bFullScreen = FALSE
+
+[Log]
+sLogFileName = /emulator/output/previous.log
+sTraceFileName = /emulator/output/previous.trace
+nTextLogLevel = 4
+nAlertDlgLogLevel = 1
+bConfirmQuit = FALSE
+EOF
+
+# Configuration for OPENSTEP 4.2
+COPY <<EOF /emulator/config/openstep42.cfg
+[ConfigDialog]
+bFullScreen = FALSE
+
+[System]
+nMachineType = 1  # NextCube
+bColor = TRUE
+bTurbo = FALSE
+bRealtime = FALSE
+nCpuLevel = 3     # 68040
+nCpuFreq = 33
+bCompatibleCpu = TRUE
+nDSPType = 1
+bDSPMemoryExpansion = FALSE
+
+[Rom]
+szRom = /emulator/rom/Rev_2.5_v66.BIN
+
+[Memory]
+nMemoryBankSize0 = 32  # More RAM for OPENSTEP
+nMemoryBankSize1 = 32
+nMemoryBankSize2 = 0
+nMemoryBankSize3 = 0
+
+[HardDisk]
+bHardDisksWriteProtected = FALSE
+szSCSIImagePath0 = /emulator/disk/openstep.img
+szSCSIImagePath1 = 
+szSCSIImagePath2 = /emulator/iso/test.iso
+
+[Boot]
+bAutoInsertDisk = TRUE
+nBootDevice = 0
+szBootOptions = -s  # Single user mode
+
+[Screen]
+nMonitorType = 2
+bShowStatusbar = FALSE
+bShowDriveLed = FALSE
+bFullScreen = FALSE
+
+[Log]
+sLogFileName = /emulator/output/previous.log
+sTraceFileName = /emulator/output/previous.trace
+nTextLogLevel = 4
+nAlertDlgLogLevel = 1
+bConfirmQuit = FALSE
+EOF
+
+# Default to NeXTSTEP 3.3
+RUN ln -s /emulator/config/nextstep33.cfg /emulator/config/previous.cfg
+
+# Create test runner script
+COPY <<'EOF' /emulator/run-test.py
+#!/usr/bin/env python3
+"""
+Previous emulator test runner for NeXTRust
+"""
+import sys
+import os
+import subprocess
+import time
+import signal
+import argparse
+import shutil
+
+def create_iso(binary_path, iso_path):
+    """Create ISO image with test binary"""
+    temp_dir = "/tmp/iso_contents"
+    os.makedirs(temp_dir, exist_ok=True)
+    
+    # Copy binary to ISO contents
+    shutil.copy(binary_path, os.path.join(temp_dir, "test"))
+    
+    # Create ISO
+    subprocess.run([
+        "genisoimage", "-o", iso_path, "-J", "-R", 
+        "-V", "NEXTRUST_TEST", temp_dir
+    ], check=True)
+    
+    shutil.rmtree(temp_dir)
+
+def run_emulator(config_path, timeout=60):
+    """Run Previous emulator with virtual display"""
+    # Start virtual display
+    xvfb = subprocess.Popen([
+        "Xvfb", ":99", "-screen", "0", "1024x768x24", "-ac"
+    ])
+    os.environ["DISPLAY"] = ":99"
+    time.sleep(2)
+    
+    # Start Previous
+    previous = subprocess.Popen([
+        "Previous", "--config", config_path
+    ], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    
+    # Monitor output
+    output = []
+    start_time = time.time()
+    
+    try:
+        while True:
+            if time.time() - start_time > timeout:
+                print("Timeout reached")
+                break
+                
+            line = previous.stdout.readline()
+            if not line:
+                break
+                
+            line = line.decode('utf-8', errors='ignore').strip()
+            if line:
+                print(f"[EMU] {line}")
+                output.append(line)
+                
+            # Check for test completion markers
+            if "TEST_PASS" in line:
+                print("Test passed!")
+                return 0, output
+            elif "TEST_FAIL" in line:
+                print("Test failed!")
+                return 1, output
+                
+    finally:
+        previous.terminate()
+        xvfb.terminate()
+        time.sleep(1)
+        previous.kill()
+        xvfb.kill()
+    
+    return 2, output  # Timeout/error
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("binary", help="Path to test binary")
+    parser.add_argument("--disk", required=True, help="Path to NeXTSTEP disk image")
+    parser.add_argument("--rom", required=True, help="Path to ROM image")
+    parser.add_argument("--timeout", type=int, default=60, help="Timeout in seconds")
+    parser.add_argument("--output", default="/emulator/output", help="Output directory")
+    
+    args = parser.parse_args()
+    
+    # Verify inputs
+    if not os.path.exists(args.binary):
+        print(f"Error: Binary not found: {args.binary}")
+        return 1
+        
+    if not os.path.exists(args.disk):
+        print(f"Error: Disk image not found: {args.disk}")
+        return 1
+        
+    if not os.path.exists(args.rom):
+        print(f"Error: ROM not found: {args.rom}")
+        return 1
+    
+    # Copy files to expected locations
+    shutil.copy(args.disk, "/emulator/disk/nextstep.img")
+    shutil.copy(args.rom, "/emulator/rom/Rev_2.5_v66.BIN")
+    
+    # Create ISO with test binary
+    iso_path = "/emulator/iso/test.iso"
+    print(f"Creating ISO with test binary...")
+    create_iso(args.binary, iso_path)
+    
+    # Run emulator
+    print(f"Starting Previous emulator...")
+    exit_code, output = run_emulator("/emulator/config/previous.cfg", args.timeout)
+    
+    # Save output
+    os.makedirs(args.output, exist_ok=True)
+    with open(os.path.join(args.output, "test.log"), "w") as f:
+        f.write("\n".join(output))
+    
+    return exit_code
+
+if __name__ == "__main__":
+    sys.exit(main())
+EOF
+
+RUN chmod +x /emulator/run-test.py
+
+# Entry point
+ENTRYPOINT ["/emulator/run-test.py"]
