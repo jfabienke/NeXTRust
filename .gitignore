@@ -6,12 +6,14 @@
 # Editor directories and files
 .idea/
 .vscode/
+.ropeproject/
 *.swp
 *.swo
 *~
 
 # Build outputs
 /target/
+**/target/
 /build/
 *.o
 *.a
@@ -19,6 +21,7 @@
 *.dylib
 *.dll
 *.mach-o
+*.elf
 
 # Rust
 Cargo.lock
@@ -28,6 +31,16 @@ Cargo.lock
 # LLVM/Clang
 *.bc
 *.ll
+*.s
+
+# Test artifacts in root
+test*.o
+test*.s
+test*.c
+test*.rs
+hello*.o
+simple*.o
+simple*.s
 
 # CI/CD
 .claude/sessions/
@@ -35,6 +48,13 @@ Cargo.lock
 .claude/hook-logs/
 .claude/status.lock
 .claude/last_session
+
+# CI infrastructure (local only)
+.nextstep-ci/sessions/
+.nextstep-ci/hook-logs/
+
+# Test results
+/tests/results/
 
 # Logs
 *.log
@@ -44,6 +64,21 @@ Cargo.lock
 *.tmp
 .cache/
 tmp/
+scheduler-dumps/
+
+# Archives
+*.tar.*
+*.xz
+*.dmg
+*.zip
+*.iso
+*.img
+releases/*.tar.gz
+!ci/emulation/disk-templates/*.img
+
+# Archives and backups
+/archives/
+*-backup/
 
 # Python
 __pycache__/
@@ -63,4 +98,19 @@ local-test-secrets.env
 secrets/
 
 # Toolchain binaries
-toolchain/
+/toolchain/
+/toolchain-debug/
+
+# Cargo caches
+.cargo/git/
+.cargo/registry/
+target/debug/incremental/
+
+# Static libraries
+*.a
+*.lib
+
+# Vendored sources (if not using submodules)
+/rust/
+/llvm-project-*/
+/vendor/

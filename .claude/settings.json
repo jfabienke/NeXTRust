@@ -5,7 +5,7 @@
         "matcher": "Bash",
         "hooks": [{
           "type": "command",
-          "command": "cd /Users/johnfabienke/Development/NeXTRust && ./hooks/dispatcher.sh pre",
+          "command": "cd /Users/johnfabienke/Development/NeXTRust && ./.nextstep-ci/hooks/dispatcher.sh pre",
           "timeout": 90
         }]
       }
@@ -15,7 +15,7 @@
         "matcher": "Bash",
         "hooks": [{
           "type": "command",
-          "command": "cd /Users/johnfabienke/Development/NeXTRust && ./hooks/dispatcher.sh post",
+          "command": "cd /Users/johnfabienke/Development/NeXTRust && ./.nextstep-ci/hooks/dispatcher.sh post",
           "timeout": 300
         }]
       }
@@ -25,7 +25,7 @@
         "matcher": "",
         "hooks": [{
           "type": "command",
-          "command": "cd /Users/johnfabienke/Development/NeXTRust && ./hooks/dispatcher.sh stop",
+          "command": "cd /Users/johnfabienke/Development/NeXTRust && ./.nextstep-ci/hooks/dispatcher.sh stop",
           "timeout": 60
         }]
       }
@@ -35,7 +35,7 @@
         "matcher": "",
         "hooks": [{
           "type": "command",
-          "command": "cd /Users/johnfabienke/Development/NeXTRust && ./hooks/dispatcher.sh user-prompt-submit",
+          "command": "cd /Users/johnfabienke/Development/NeXTRust && ./.nextstep-ci/hooks/dispatcher.sh user-prompt-submit",
           "timeout": 30
         }]
       }
