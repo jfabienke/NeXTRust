@@ -33,14 +33,11 @@ Cargo.lock
 *.ll
 *.s
 
-# Test artifacts in root
+# Test artifacts
 test*.o
 test*.s
-test*.c
-test*.rs
 hello*.o
 simple*.o
-simple*.s
 
 # CI/CD
 .claude/sessions/
